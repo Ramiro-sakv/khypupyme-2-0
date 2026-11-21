@@ -137,12 +137,12 @@ La entrega está identificada por la etiqueta [parcial1-khypupyme2-v1](https://g
 
 ### Abrir la demostración en una instalación local
 
-Completa la preparación de Windows de arriba. Las credenciales y el buzón se generan en tu equipo. Ejecuta en PowerShell:
+Completa la preparación de Windows de arriba. La demostración usa la base de pruebas y una cuenta ficticia independiente. Las credenciales y el buzón se generan en tu equipo. Ejecuta en PowerShell:
 
 ```powershell
 dotnet build KhypuPyme.slnx -c Release --no-restore
 pnpm --dir web build
-.\scripts\Start-Api.ps1 -Port 5284 -IncludeWeb
+.\scripts\Start-Api.ps1 -Database Test -Port 5284 -IncludeWeb
 ```
 
 Abre [KhypuPyme 2.0 en el puerto 5284](http://127.0.0.1:5284/). Si quieres comprobar la conexión, visita [Estado de PostgreSQL](http://127.0.0.1:5284/api/v1/health/database) y busca el estado **available**. Si el puerto está ocupado, elige otro puerto libre y usa la nueva dirección. Mantén abierta la terminal mientras usas la app y pulsa Ctrl+C al terminar.
@@ -167,4 +167,4 @@ $env:KHYPU_TEST_PLAYWRIGHT = Join-Path $parcialTools 'node_modules/playwright-co
 .\scripts\Test-Parcial1.ps1
 ```
 
-El script registra una cuenta temporal, carga únicamente la ficha del ejemplo, abre Caja y registra la compra y la venta desde Edge. Verifica los saldos contra PostgreSQL, guarda el PDF desde el historial y exige un rechazo HTTP 409 al pedir más stock del disponible. Usa únicamente la base **khypupyme2_test** y retira la cuenta ficticia al final. Guarda el comprobante y el resultado en **artifacts/parcial1**.
+El script registra una cuenta temporal, carga únicamente la ficha del ejemplo, abre Caja y registra la compra y la venta desde Edge. Verifica los saldos contra PostgreSQL, guarda el PDF desde el historial y exige un rechazo HTTP 409 al pedir más stock del disponible. Usa únicamente la base **khypupyme2_test** y retira la cuenta ficticia al final. Guarda el comprobante, el resultado y las capturas **almacen-ca01.png** y **caja-ca01.png** en **artifacts/parcial1**. Para revisar CA-01, coteja el número de venta del historial con el PDF, las 8 piezas (80 pies tablares y Bs 400 a costo) de esa medida y los Bs 700 de efectivo esperado. Guarda tus evidencias aparte del repositorio.
