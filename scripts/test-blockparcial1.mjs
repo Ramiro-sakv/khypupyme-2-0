@@ -134,6 +134,20 @@ try {
   const cashValue = page.locator(".cash-metrics div").filter({ hasText: "Efectivo esperado" });
   await cashValue.waitFor();
   assert.match(await cashValue.innerText(), /700,00/);
+  await cashValue.screenshot({ path: join(evidenceDir, "caja-ca01.png") });
+
+  await page.goto(base + "/?vista=catalogo");
+  const warehouse = page.getByRole("table", { name: "Existencias del almacén", exact: true });
+  await warehouse.getByRole("row", { name: /Tabla seca/ }).getByRole("button", { name: "Ver existencias" }).click();
+  const measures = page.getByRole("table", { name: "Existencias de Tabla seca", exact: true });
+  await measures.waitFor();
+  const measureRow = measures.getByRole("row").nth(1);
+  assert.equal(Number(await measureRow.getByRole("rowheader").innerText()), 10);
+  const measureCells = await measureRow.getByRole("cell").allTextContents();
+  assert.deepEqual(measureCells.slice(0, 4).map(Number), [2, 6, 8, 80]);
+  assert.match(measureCells[4], /400,00/);
+  await measures.screenshot({ path: join(evidenceDir, "almacen-ca01.png") });
+
   const stock = await getStock(productId);
   assert.deepEqual(stock.items, [{ timber, stock: 8, valueMinor: 40_000 }]);
   const cash = await getCash();
@@ -168,7 +182,8 @@ try {
     environment: "PostgreSQL khypupyme2_test y Microsoft Edge",
     product: "Tabla seca · Pino · 2 pulgadas × 6 pulgadas × 10 pies",
     confirmed: { openingBOB: 1000, purchased: 10, paidBOB: 500, sold: 2, saleBOB: 200,
-      stock: 8, cashBOB: 700, saleNumber: sale.number, saleCount: 1, pdf: "comprobante-sicomoro.pdf" },
+      stock: 8, boardFeet: 80, stockValueBOB: 400, cashBOB: 700, saleNumber: sale.number, saleCount: 1,
+      pdf: "comprobante-sicomoro.pdf", warehouseImage: "almacen-ca01.png", cashImage: "caja-ca01.png" },
     rejected: { onScreen: shortage, confirmDisabled: true, apiStatus: 409, stock: 8, cashBOB: 700,
       saleCount: 1, inventoryMovementCountBefore: beforeMoves.items.length, inventoryMovementCountAfter: (await moves()).items.length },
   };
