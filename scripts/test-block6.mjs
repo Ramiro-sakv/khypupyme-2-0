@@ -111,11 +111,28 @@ try {
   assert.equal(warehouse.items[0].product.id, soda);
   await post(store, { kind: "hold-lot", entityId: soda, code: "SEGUNDO", note: "Sello por verificar" });
   assert.equal((await request(store + "/warehouse?attention=held", 200)).items[0].product.id, soda);
+  const lots = async () => (await request(store + "/lots/" + soda, 200)).items;
+  const beforeAllocation = await lots();
+  assert.deepEqual(beforeAllocation.map(({ lot, quantity, sellable, held }) => [lot, quantity, sellable, held]).sort(), [
+    ["PRIMERO", 19, true, false],
+    ["SEGUNDO", 24, false, true],
+    ["VENCIDO", 10, false, false],
+  ]);
+  const heldSale = await sell(store, [measured(soda, "1", "piece", 500)]);
+  const heldSaleDocument = await document(store, heldSale);
+  assert.deepEqual(heldSaleDocument.lines[0].details.lots.map(({ lot, quantity }) => [lot, quantity]), [["PRIMERO", 1]]);
+  const afterAllocation = await lots();
+  assert.deepEqual(afterAllocation, beforeAllocation.map((row) => row.lot === "PRIMERO"
+    ? { ...row, quantity: row.quantity - 1, valueMinor: row.valueMinor - heldSaleDocument.lines[0].details.lots[0].costMinor }
+    : row));
+  assert.equal((await product(store, soda)).sellableStock, 18);
+  assert.match((await sell(store, [measured(soda, "19", "piece", 500)], 409)).detail, /disponible 18/);
+  assert.deepEqual(await lots(), afterAllocation);
   await post(store, { kind: "release-lot", entityId: soda, code: "SEGUNDO", note: "Sello confirmado" });
   const spoilage = await post(store, { kind: "stock-loss", note: "Lote vencido", lines: [measured(soda, "2", "piece", 0, "VENCIDO")] });
   assert.equal((await document(store, spoilage)).totalMinor, 400);
-  assert.equal((await product(store, soda)).sellableStock, 43);
-  console.log("Tienda: 2 cajas de 24 − 5 = 43 vendibles; lote más próximo primero; vencidos excluidos y visibles para pérdida.");
+  assert.equal((await product(store, soda)).sellableStock, 42);
+  console.log("Tienda: asignó una unidad a PRIMERO; SEGUNDO apartado y VENCIDO conservaron su saldo. Pedir 19 con 18 vendibles devolvió HTTP 409.");
 
   const rice = (await save(store, "Arroz suelto", "AR", 22_000, {
     retailProduct: { unit: "kg", boxSize: 1, reorder: 0.5, trackLots: false },

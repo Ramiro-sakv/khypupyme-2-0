@@ -30,8 +30,8 @@ export async function checkBrowser(cookies, businesses, password) {
     await scanner.press("Enter");
     await page.getByText("Soda añadido.").waitFor();
     assert.equal(await scanner.evaluate((field) => field === document.activeElement), true);
-    await page.getByRole("textbox", { name: "Cantidad", exact: true }).fill("44");
-    await page.getByText(/Pedido 44 · Disponible 43 unidades · Faltan 1/).waitFor();
+    await page.getByRole("textbox", { name: "Cantidad", exact: true }).fill("43");
+    await page.getByText(/Pedido 43 · Disponible 42 unidades · Faltan 1/).waitFor();
     await button(/^Revisar (venta|compra|cotización|entrada|cambio)$/).click();
     assert.equal(await dialog.getByRole("button", { name: "Confirmar venta" }).isDisabled(), true);
     await page.keyboard.press("Escape");
