@@ -153,11 +153,19 @@ try {
 
   const moves = () => request(scope + "/warehouse/" + productId + "/movements", 200);
   const beforeMoves = await moves();
-  const rejected = await command({ kind: "sale", method: "cash", lines: [line(productId, 9, 1000)] }, 409);
+  const rejectedOperationId = randomUUID();
+  const rejected = await command({
+    operationId: rejectedOperationId,
+    kind: "sale",
+    method: "cash",
+    lines: [line(productId, 9, 1000)],
+  }, 409);
   assert.match(rejected.detail, /disponibles 8, faltan 1/);
+  await request(scope + "/commands/" + rejectedOperationId, 404);
   assert.deepEqual(await getStock(productId), stock);
   assert.deepEqual(await getCash(), cash);
-  assert.deepEqual(await moves(), beforeMoves);
+  const afterMoves = await moves();
+  assert.deepEqual(afterMoves, beforeMoves);
   const finalSales = await history();
   assert.equal(finalSales.items.length, 1);
   assert.equal(finalSales.items[0].number, sale.number);
@@ -169,12 +177,12 @@ try {
     product: "Tabla seca · Pino · 2 pulgadas × 6 pulgadas × 10 pies",
     confirmed: { openingBOB: 1000, purchased: 10, paidBOB: 500, sold: 2, saleBOB: 200,
       stock: 8, cashBOB: 700, saleNumber: sale.number, saleCount: 1, pdf: "comprobante-sicomoro.pdf" },
-    rejected: { onScreen: shortage, confirmDisabled: true, apiStatus: 409, stock: 8, cashBOB: 700,
-      saleCount: 1, inventoryMovementCountBefore: beforeMoves.items.length, inventoryMovementCountAfter: (await moves()).items.length },
+    rejected: { operationId: rejectedOperationId, onScreen: shortage, confirmDisabled: true, apiStatus: 409, statusQueryHttpStatus: 404, stock: 8, cashBOB: 700,
+      saleCount: 1, inventoryMovementCountBefore: beforeMoves.items.length, inventoryMovementCountAfter: afterMoves.items.length },
   };
   writeFileSync(join(evidenceDir, "resultado.json"), JSON.stringify(evidence, null, 2) + "\n");
   console.log("CA-01 APROBADO · " + sale.number + " · Bs 200 · stock 8 · Caja Bs 700 · PDF guardado");
-  console.log("CA-02 APROBADO · 9 pedidas, 8 disponibles, 1 faltante · confirmación deshabilitada · HTTP 409 · sin movimientos nuevos");
+  console.log("CA-02 APROBADO · 9 pedidas, 8 disponibles, 1 faltante · confirmación deshabilitada · HTTP 409 · estado HTTP 404 · sin movimientos nuevos");
 } finally {
   try {
     await browser?.close();
