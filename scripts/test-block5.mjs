@@ -119,8 +119,16 @@ try {
     lines: [line(pine, 2, 1000, pine4), line(oak, 1, 2100, oak7), line(pine, 1, 1000, pine6)] });
   const invoice = await detail(scope, mixed);
   assert.equal(invoice.totalMinor, 32_521);
-  assert.equal(invoice.lines.length, 3);
-  assert.deepEqual(new Set(invoice.lines.map((row) => row.species)), new Set(["Pino", "Roble"]));
+  const timberLines = ({ lines }) => lines
+    .map(({ productId, species, timber, quantity, unitMinor, subtotalMinor }) =>
+      ({ productId, species, timber, quantity, unitMinor, subtotalMinor }))
+    .sort((left, right) => left.timber.widthMicros - right.timber.widthMicros);
+  const expectedTimberLines = [
+    { productId: pine, species: "Pino", timber: pine4, quantity: 2, unitMinor: 1000, subtotalMinor: 13_333 },
+    { productId: pine, species: "Pino", timber: pine6, quantity: 1, unitMinor: 1000, subtotalMinor: 10_000 },
+    { productId: oak, species: "Roble", timber: oak7, quantity: 1, unitMinor: 2100, subtotalMinor: 9_188 },
+  ];
+  assert.deepEqual(timberLines(invoice), expectedTimberLines);
   const original = invoice.lines.find((row) => row.timber.widthMicros === pine4.widthMicros);
   const returned = await run(scope, { kind: "return", method: "transfer", note: "Devolución de la medida original", sourceId: invoice.id,
     lines: [{ productId: pine, originalLineId: original.lineId, quantity: 1, restock: true }] });
@@ -137,6 +145,11 @@ try {
   assert.equal((await detail(scope, exact)).totalMinor, 18_333);
   await request(business + "/settings", 204, "PUT", { businessId: business.split("/").at(-1), timberUnits: "metric" });
   assert.equal((await detail(scope, sale)).timberUnits, "imperial");
+  const historicalMixed = await detail(scope, mixed);
+  assert.equal(historicalMixed.timberUnits, "imperial");
+  assert.equal(historicalMixed.totalMinor, invoice.totalMinor);
+  assert.deepEqual(timberLines(historicalMixed), expectedTimberLines);
+  console.log("Comprobante mixto: Pino Bs 133,33 y Bs 100,00; Roble Bs 91,88; total Bs 325,21. Medidas e importes conservados tras cambiar a métricas.");
   const inMetric = await run(scope, { kind: "quote", lines: [line(pine, 2, 1000, pine6)] });
   assert.equal((await detail(scope, inMetric)).timberUnits, "metric");
   assert.equal((await detail(scope, inMetric)).totalMinor, 20_000);
