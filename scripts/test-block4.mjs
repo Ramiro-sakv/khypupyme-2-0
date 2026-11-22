@@ -140,13 +140,30 @@ try {
   console.log("Carrera por la última unidad, fiado saldado, pérdida y resultado estimado verificados.");
 
   const line = [{ productId: first, quantity: 1, unitMinor: 10_000 }];
-  const before = (await stock(first)).stock;
+  const beforeQuoteStock = await stock(first);
+  const beforeQuoteCash = await request(scope + "/cash", 200);
+  const salesPath = scope + "/history?kind=sale";
+  const beforeQuoteSales = await request(salesPath, 200);
   const quote = await post({ kind: "quote", customerId: customer, lines: line });
   const quoted = await entry(quote.entityId);
   assert.ok(quoted.expiresOn);
-  assert.equal((await stock(first)).stock, before);
-  await post({ kind: "sale", sourceId: quote.entityId, customerId: customer, method: "transfer", lines: line });
-  await post({ kind: "sale", sourceId: quote.entityId, customerId: customer, method: "transfer", lines: line }, 409);
+  assert.deepEqual(await stock(first), beforeQuoteStock);
+  assert.deepEqual(await request(scope + "/cash", 200), beforeQuoteCash);
+  assert.deepEqual(await request(salesPath, 200), beforeQuoteSales);
+
+  const conversion = { kind: "sale", sourceId: quote.entityId, customerId: customer, method: "transfer", lines: line };
+  const converted = await post(conversion);
+  const convertedSale = await entry(converted.entityId);
+  assert.equal(convertedSale.sourceId, quote.entityId);
+  assert.equal(convertedSale.totalMinor, quoted.totalMinor);
+  const convertedStock = await stock(first);
+  const convertedSales = await request(salesPath, 200);
+  assert.equal(convertedStock.stock, beforeQuoteStock.stock - 1);
+  assert.equal(convertedSales.items.filter((row) => row.sourceId === quote.entityId).length, 1);
+  await post(conversion, 409);
+  assert.deepEqual(await stock(first), convertedStock);
+  assert.deepEqual(await request(salesPath, 200), convertedSales);
+  assert.deepEqual(await request(scope + "/cash", 200), beforeQuoteCash);
   await post({ ...product, entityId: first, amountMinor: 12_000, name: "Nombre nuevo QA" });
   assert.equal((await entry(quote.entityId)).lines[0].name, "Tabla QA");
   assert.equal((await entry(quote.entityId)).totalMinor, 10_000);
