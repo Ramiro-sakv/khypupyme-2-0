@@ -12,6 +12,7 @@ export function ReportsPage({ business, practice }: { business: string; practice
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [period, setPeriod] = useState("");
+  const [rangeError, setRangeError] = useState("");
   const data = useCommerceData<Report>("/report?" + period);
   const report = data.data;
   return <div className="commerce-stack">
@@ -26,16 +27,32 @@ export function ReportsPage({ business, practice }: { business: string; practice
     <Card>
       <form className="inline-actions report-range" onSubmit={(event) => {
         event.preventDefault();
+        if (from && to) {
+          const daysBetween = (Date.parse(to) - Date.parse(from)) / 86_400_000;
+          if (daysBetween < 0) {
+            setRangeError("La fecha inicial debe ser igual o anterior a la fecha final.");
+            return;
+          }
+          if (daysBetween >= 366) {
+            setRangeError("Elige un periodo de hasta 366 días, incluyendo ambas fechas.");
+            return;
+          }
+        }
+        setRangeError("");
         const parameters = new URLSearchParams();
         if (from) parameters.set("from", from);
         if (to) parameters.set("to", to);
-        setPeriod(parameters.toString());
-        data.reload();
+        const next = parameters.toString();
+        if (next === period) data.reload();
+        else setPeriod(next);
       }}>
-        <TextField label="Desde" type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
-        <TextField label="Hasta" type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+        <TextField label="Desde" type="date" value={from} aria-invalid={!!rangeError}
+          onChange={(event) => { setFrom(event.target.value); setRangeError(""); }} />
+        <TextField label="Hasta" type="date" value={to} aria-invalid={!!rangeError}
+          onChange={(event) => { setTo(event.target.value); setRangeError(""); }} />
         <Button type="submit">Consultar periodo</Button>
       </form>
+      {rangeError && <Alert tone="error">{rangeError}</Alert>}
       {report && <p>{dateLabel(report.from)} al {dateLabel(report.to)} · Hora de Bolivia</p>}
     </Card>
     {!report ? <LoadFeedback {...data} /> : <>
