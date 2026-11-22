@@ -21,6 +21,8 @@ Esta versión permite ejecutar una demostración local con datos ficticios. Usa 
 | [Persistence/Migrations](server/KhypuPyme.Api/Persistence/Migrations) | Esquema relacional, migraciones y políticas de acceso a filas. |
 | [scripts](scripts) | Preparación de PostgreSQL, arranque local y verificaciones con cuentas ficticias. |
 
+Para seguir una operación desde la pantalla hasta sus registros, consulta el [recorrido de arquitectura](docs/ARQUITECTURA.md).
+
 La evolución funcional está en [PROGRESO.md](PROGRESO.md) y el estudio de los flujos en [Operación por rubro](docs/OPERACION-POR-RUBRO.md). El contexto de la primera versión se conserva en el [repositorio anterior](https://github.com/Ramiro-sakv/khypupyme-app/tree/5147dfd).
 Para los instaladores privados y la configuración de Render y Neon, consulta [PILOTO.md](PILOTO.md).
 
