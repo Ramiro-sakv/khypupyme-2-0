@@ -180,17 +180,25 @@ try {
   await sell(appliances, [line(fridge, 1, 220_000, ["eq-001"])], 409);
   const unitLine = (await document(appliances, soldUnit)).lines[0];
   assert.equal(unitLine.details.warrantyUntil, before.unit.warrantyUntil);
-  await post(appliances, { kind: "return", sourceId: soldUnit.entityId, method: "qr", note: "Revisar unidad", lines: [
+  const refund = await post(appliances, { kind: "return", sourceId: soldUnit.entityId, method: "qr", note: "Revisar unidad", lines: [
     { productId: fridge, originalLineId: unitLine.lineId, quantity: 1 },
   ] });
-  assert.equal((await serial()).unit.state, "inspection");
+  const beforeRejectedSerialSale = await serial();
+  assert.equal(beforeRejectedSerialSale.unit.state, "inspection");
+  const [returnMovement, saleMovement] = beforeRejectedSerialSale.movements;
+  assert.deepEqual([returnMovement.kind, returnMovement.entryId, returnMovement.sourceId, returnMovement.note],
+    ["return", refund.entityId, soldUnit.entityId, "Revisar unidad"]);
+  assert.deepEqual([saleMovement.kind, saleMovement.entryId], ["sale", soldUnit.entityId]);
   const isolated = await request(appliances + "/availability", 200, "POST", { lines: [line(fridge, 1, 0, ["EQ-001"])] });
   assert.equal(isolated[0].available, 0);
   assert.equal(isolated[0].reason, "En inspección");
   assert.equal((await request(appliances + "/attention", 200)).inspections, 1);
   assert.equal((await request(appliances + "/report", 200)).stockValueMinor, 200_000);
   assert.equal((await request(appliances + "/serials?state=available", 200)).items.length, 1);
-  await sell(appliances, [line(fridge, 1, 220_000, ["EQ-001"])], 409);
+  const rejectedSerialSale = await sell(appliances, [line(fridge, 1, 220_000, ["EQ-001"])], 409);
+  assert.match(rejectedSerialSale.detail, /Serie EQ-001: sin stock para esta serie/);
+  assert.deepEqual(await serial(), beforeRejectedSerialSale);
+  console.log("Serie EQ-001: la reventa en inspección devolvió HTTP 409; el historial conservó la devolución enlazada a su venta sin añadir movimientos.");
   await post(appliances, { kind: "inspection", serial: "EQ-001", release: true, note: "Funciona correctamente" });
   await post(appliances, { kind: "inspection", serial: "EQ-001", release: true, note: "Repetida" }, 409);
   assert.equal((await product(appliances, fridge)).stock, 2);
