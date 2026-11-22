@@ -21,6 +21,7 @@ export function BusinessPicker({ industries, last, select, create, accountId }: 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<BusinessList | null>(null);
+  const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [refresh, setRefresh] = useState(0);
@@ -32,7 +33,7 @@ export function BusinessPicker({ industries, last, select, create, accountId }: 
     void get<BusinessList>(businessApi + "?" + options, abort.signal)
       .then((result) => { if (!abort.signal.aborted) setData(result); })
       .catch((failure: unknown) => {
-        if (!abort.signal.aborted) setError(failure instanceof Error ? failure.message : "No se pudo cargar la lista.");
+        if (!abort.signal.aborted) setLoadError(failure instanceof Error ? failure.message : "No se pudo cargar la lista.");
       });
     return () => abort.abort();
   }, [page, search, refresh]);
@@ -41,15 +42,21 @@ export function BusinessPicker({ industries, last, select, create, accountId }: 
     event.preventDefault();
     setSearch(query.trim());
     setPage(1);
-    setData(null);
     setError("");
-    setRefresh((value) => value + 1);
+    retryList();
   }
 
   function goToPage(next: number) {
     setData(null);
+    setLoadError("");
     setError("");
     setPage(next);
+  }
+
+  function retryList() {
+    setLoadError("");
+    setData(null);
+    setRefresh((value) => value + 1);
   }
 
   async function open(item: Pick<BusinessCard, "id">) {
@@ -84,7 +91,10 @@ export function BusinessPicker({ industries, last, select, create, accountId }: 
         <Button variant="secondary" icon="search" type="submit" disabled={openingId !== null}>Buscar</Button>
       </form>
       {error && <Alert tone="error">{error}</Alert>}
-      {!data && !error && <Alert>Cargando negocios…</Alert>}
+      {loadError ? <div className="inline-actions">
+        <Alert tone="error">{loadError}</Alert>
+        <Button variant="secondary" disabled={openingId !== null} onClick={retryList}>Reintentar lista</Button>
+      </div> : !data && <p role="status">Cargando negocios…</p>}
       {data?.items.length === 0 && <EmptyState icon="shops" title={search ? "Sin coincidencias" : "Todavía no tienes negocios"}>
         {search ? "Prueba con otro nombre." : "Cuando crees un negocio aparecerá aquí."}
       </EmptyState>}
