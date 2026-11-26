@@ -78,6 +78,7 @@ ssl_key_file = '$($keyFile.Replace('\','/'))'
         PGPASSWORD = $ownerSecret; PGSSLMODE = 'verify-full'; PGSSLROOTCERT = $certFile
         ConnectionStrings__KhypuPyme = "$database;Username=$owner;Password=$ownerSecret"
         ASPNETCORE_ENVIRONMENT = 'Production'; DOTNET_ENVIRONMENT = 'Production'; Pilot__Enabled = 'false'
+        Pilot__AllowedEmails = 'invitado@example.test'; Pilot__PasswordOnly = 'false'
     }
 
     $psql = Get-PostgresTool 'psql'
@@ -86,6 +87,9 @@ ssl_key_file = '$($keyFile.Replace('\','/'))'
     if ($LASTEXITCODE) { throw 'No se pudo crear el rol de prueba.' }
     & $api --migrate-pilot | Out-Null
     if ($LASTEXITCODE) { throw 'Falló la migración del piloto de prueba.' }
+    $pilotPassword = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(24))
+    @('invitado@example.test', $pilotPassword) | & $api --create-pilot-account | Out-Null
+    if ($LASTEXITCODE) { throw 'Falló la creación de la cuenta invitada.' }
     & $psql @connection -d khypupyme2_pilot -q -v "app_name=$appRole" -f (Join-Path $PSScriptRoot 'grant-application.sql')
     if ($LASTEXITCODE) { throw 'No se pudieron aplicar los permisos de ejecución.' }
     Set-TestVariables @{
@@ -110,9 +114,34 @@ ssl_key_file = '$($keyFile.Replace('\','/'))'
     $response = Invoke-WebRequest "$origin/api/v1/auth/register/code" -SkipCertificateCheck -WebSession $clientSession -Method Post `
         -Headers @{'X-CSRF-TOKEN' = $token} -ContentType 'application/json' -Body '{"email":"no-invitado@example.test"}' -SkipHttpErrorCheck
     if ($response.StatusCode -ne 403) { throw "Se esperaba 403 después del reinicio. Se obtuvo $($response.StatusCode)." }
+    Stop-Process -InputObject $process
+    $null = $process.WaitForExit(5000)
+    Set-TestVariables @{ Pilot__PasswordOnly = 'true'; Mail__Token = ''; Mail__From = '' }
+    $process = Start-TestApi
+    Wait-TestApi
+    $token = (Invoke-RestMethod "$origin/api/v1/auth/csrf" -SkipCertificateCheck -SessionVariable passwordSession).token
+    $requestParams = @{
+        SkipCertificateCheck = $true; WebSession = $passwordSession; Method = 'Post'
+        Headers = @{'X-CSRF-TOKEN' = $token}; ContentType = 'application/json'; SkipHttpErrorCheck = $true
+    }
+    $credentials = @{ email = 'invitado@example.test'; password = $pilotPassword } | ConvertTo-Json -Compress
+    foreach ($route in @('register/code', 'register', 'recover/code', 'recover')) {
+        $response = Invoke-WebRequest "$origin/api/v1/auth/$route" @requestParams -Body $credentials
+        if ($response.StatusCode -ne 503) { throw "El modo sin correo dejó activo $route." }
+    }
+    $response = Invoke-WebRequest "$origin/api/v1/auth/login" @requestParams -Body $credentials
+    if ($response.StatusCode -ne 204) { throw 'La cuenta invitada no pudo ingresar por contraseña.' }
+    $session = Invoke-RestMethod "$origin/api/v1/auth/session" -SkipCertificateCheck -WebSession $passwordSession
+    if ($session.email -ne 'invitado@example.test' -or -not $session.passwordOnly -or $session.googleConfigured) {
+        throw 'La sesión del piloto por contraseña no coincide con la cuenta invitada.'
+    }
+    $foreign = @{ email = 'no-invitado@example.test'; password = $pilotPassword } | ConvertTo-Json -Compress
+    $requestParams.Headers['X-CSRF-TOKEN'] = (Invoke-RestMethod "$origin/api/v1/auth/csrf" -SkipCertificateCheck -WebSession $passwordSession).token
+    $response = Invoke-WebRequest "$origin/api/v1/auth/login" @requestParams -Body $foreign
+    if ($response.StatusCode -ne 403) { throw 'El piloto aceptó un correo fuera de la lista.' }
     $encrypted = & $psql @connection -d khypupyme2_pilot -Atq -c "SELECT EXISTS (SELECT 1 FROM khypupyme.pilot_key_ring WHERE payload LIKE '%encryptedSecret%');"
     if ($LASTEXITCODE -or $encrypted -ne 't') { throw 'Falta la clave de sesión cifrada.' }
-    Write-Host 'Perfil Production local: PostgreSQL TLS, rol limitado, web HTTPS, filtro de invitación y claves cifradas recuperadas tras reiniciar.'
+    Write-Host 'Perfil Production local: PostgreSQL TLS, rol limitado, ingreso por contraseña sin correo, lista de invitados y claves cifradas recuperadas tras reiniciar.'
 } finally {
     if ($process -and -not $process.HasExited) { Stop-Process -InputObject $process; $null = $process.WaitForExit(5000) }
     if ($running) { & (Get-PostgresTool 'pg_ctl') stop -D $cluster -w -m fast | Out-Null }

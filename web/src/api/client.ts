@@ -12,7 +12,8 @@ export class ApiError extends Error {
 async function read<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   const nativeSession = isNative && path === auth + "/session";
-  const emptySession = { email: null, accountId: null, googleConfigured: false, googleLinked: false, localMailbox: false };
+  const emptySession = { email: null, accountId: null, googleConfigured: false, googleLinked: false,
+    localMailbox: false, localNetwork: false, passwordOnly: false };
   if (isNative) {
     const token = await nativeToken();
     if (!token && nativeSession) return emptySession as T;

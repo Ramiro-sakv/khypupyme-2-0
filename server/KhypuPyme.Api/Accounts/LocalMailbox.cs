@@ -7,7 +7,7 @@ namespace KhypuPyme.Api.Accounts;
 internal sealed class LocalMailbox(IWebHostEnvironment environment, IConfiguration configuration, PilotOptions pilot,
     IHttpClientFactory clients)
 {
-    public bool IsEnabled => pilot.Enabled || environment.IsDevelopment();
+    public bool IsEnabled => pilot.Enabled ? !pilot.PasswordOnly : environment.IsDevelopment();
 
     public async Task DeliverAsync(string email, string purpose, string code, CancellationToken ct)
     {

@@ -25,16 +25,16 @@ internal static class AccountEndpoints
             return TypedResults.Ok(new SessionInfo(user?.Email, false, false, user?.Id));
         }).RequireAuthorization("Account");
         var writes = group.MapGroup("").AddEndpointFilter<CsrfFilter>().RequireRateLimiting("auth");
-        writes.MapPost("/register/code", SendRegistrationAsync);
-        writes.MapPost("/register", RegisterAsync);
+        writes.MapPost("/register/code", SendRegistrationAsync).AddEndpointFilter(RequireEmailFlow);
+        writes.MapPost("/register", RegisterAsync).AddEndpointFilter(RequireEmailFlow);
         writes.MapPost("/login", LoginAsync);
         writes.MapPost("/logout", async (SignInManager<IdentityUser<Guid>> signIn) =>
         {
             await signIn.SignOutAsync();
             return Results.NoContent();
         });
-        writes.MapPost("/recover/code", SendRecoveryAsync);
-        writes.MapPost("/recover", RecoverAsync);
+        writes.MapPost("/recover/code", SendRecoveryAsync).AddEndpointFilter(RequireEmailFlow);
+        writes.MapPost("/recover", RecoverAsync).AddEndpointFilter(RequireEmailFlow);
 
         group.MapGoogle();
     }
@@ -48,8 +48,14 @@ internal static class AccountEndpoints
         var googleConfigured = GoogleFlow.IsEnabled(context.RequestServices.GetRequiredService<IConfiguration>());
         var linked = user is not null && (await users.GetLoginsAsync(user)).Any(login => login.LoginProvider == "Google");
         return TypedResults.Ok(new SessionInfo(user?.Email, googleConfigured, linked, user?.Id,
-            LocalMailbox: environment.IsDevelopment() && !pilot.Enabled));
+            LocalMailbox: environment.IsDevelopment() && !pilot.Enabled,
+            LocalNetwork: LocalNetworkHosting.IsEnabled(environment), PasswordOnly: pilot.PasswordOnly));
     }
+
+    private static ValueTask<object?> RequireEmailFlow(EndpointFilterInvocationContext context, EndpointFilterDelegate next) =>
+        !context.HttpContext.RequestServices.GetRequiredService<LocalMailbox>().IsEnabled
+            ? ValueTask.FromResult<object?>(AuthErrors.Fail("Usa una cuenta existente. El correo aún requiere configuración.", 503))
+            : next(context);
 
     private static bool ValidEmail(string? email) =>
         email is { Length: > 0 and <= 256 } && new EmailAddressAttribute().IsValid(email);
@@ -160,7 +166,8 @@ internal sealed class CsrfFilter(IAntiforgery antiforgery) : IEndpointFilter
 }
 
 public sealed record CsrfToken(string Token);
-public sealed record SessionInfo(string? Email, bool GoogleConfigured, bool GoogleLinked, Guid? AccountId, bool LocalMailbox = false);
+public sealed record SessionInfo(string? Email, bool GoogleConfigured, bool GoogleLinked, Guid? AccountId,
+    bool LocalMailbox = false, bool LocalNetwork = false, bool PasswordOnly = false);
 public sealed record EmailInput(string? Email);
 public sealed record PasswordInput(string? Email, string? Password);
 public sealed record CodePasswordInput(string? Email, string? Code, string? Password);

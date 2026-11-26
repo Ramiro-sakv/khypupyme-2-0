@@ -86,6 +86,8 @@ function AccountApp() {
   </section>;
 
   return <main className="app-shell">
+    {session?.localNetwork && <div className="environment-strip">Red del negocio · Pagos de demostración</div>}
+    {session?.passwordOnly && <div className="environment-strip">Piloto privado · Pagos de demostración</div>}
     {session?.localMailbox && <div className="environment-strip">Entorno local · Pagos de demostración</div>}
     <header className="app-header">
       <div className="brand"><span className="brand-mark" aria-hidden="true">K</span><strong>KhypuPyme 2.0</strong></div>
@@ -113,7 +115,9 @@ function AccountApp() {
         })}>{acting ? "Esperando al navegador…" : "Ingresar con el navegador"}</Button>
       </section>
     ) : (
-      <AuthPage google={session.googleConfigured} localMailbox={session.localMailbox} notice={googleNotice} returnTo={returnTo} onSignIn={refreshSession} />
+      <AuthPage google={session.googleConfigured} localMailbox={session.localMailbox} localNetwork={session.localNetwork}
+        passwordOnly={session.passwordOnly}
+        notice={googleNotice} returnTo={returnTo} onSignIn={refreshSession} />
     ))}
   </main>;
 }

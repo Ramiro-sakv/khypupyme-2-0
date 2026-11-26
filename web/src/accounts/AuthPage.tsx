@@ -7,9 +7,11 @@ import shopPhoto from "../assets/comercio-khypupyme.jpg";
 type Mode = "login" | "register" | "recover";
 const auth = "/api/v1/auth";
 
-export function AuthPage({ google, localMailbox, returnTo, notice, onSignIn }: {
+export function AuthPage({ google, localMailbox, localNetwork, passwordOnly, returnTo, notice, onSignIn }: {
   google: boolean;
   localMailbox: boolean;
+  localNetwork: boolean;
+  passwordOnly: boolean;
   returnTo: string | null;
   notice: string;
   onSignIn: () => Promise<void>;
@@ -82,6 +84,8 @@ export function AuthPage({ google, localMailbox, returnTo, notice, onSignIn }: {
       </div>
       <div className="account-card">
         <h2>{title}</h2>
+        {localNetwork && <p>Ingresa con la cuenta que ya usas en la computadora del negocio.</p>}
+        {passwordOnly && <p>Ingresa con la cuenta de prueba que te asignaron para este piloto.</p>}
         {returnTo && mode === "login" && <p>Ingresa para autorizar la aplicación instalada.</p>}
         {error && <Alert tone="error">{error}</Alert>}
         {feedback && <Alert>{feedback}</Alert>}
@@ -105,7 +109,7 @@ export function AuthPage({ google, localMailbox, returnTo, notice, onSignIn }: {
           {mode !== "login" && verified && <Button variant="secondary"
             disabled={busy} onClick={() => void run(sendCode)}>Reenviar código</Button>}
         </form>
-        {mode === "login" ? (
+        {!localNetwork && !passwordOnly && (mode === "login" ? (
           <div className="account-actions">
             {google ? <a className="secondary link-button" href={auth + "/google/start" +
               (returnTo ? "?returnTo=" + encodeURIComponent(returnTo) : "")}>Continuar con Google</a>
@@ -113,7 +117,7 @@ export function AuthPage({ google, localMailbox, returnTo, notice, onSignIn }: {
             <Button variant="plain" disabled={busy} onClick={() => open("register")}>Crear cuenta</Button>
             <Button variant="plain" disabled={busy} onClick={() => open("recover")}>Olvidé mi contraseña</Button>
           </div>
-        ) : <Button variant="plain" disabled={busy} onClick={() => open("login")}>Volver al ingreso</Button>}
+        ) : <Button variant="plain" disabled={busy} onClick={() => open("login")}>Volver al ingreso</Button>)}
       </div>
     </section>
   );

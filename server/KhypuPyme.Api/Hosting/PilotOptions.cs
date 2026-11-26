@@ -12,14 +12,17 @@ internal sealed class PilotOptions(IConfiguration config, IWebHostEnvironment en
         .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     public bool Enabled { get; } = config.GetValue<bool>("Pilot:Enabled");
+    public bool PasswordOnly => Enabled && config.GetValue<bool>("Pilot:PasswordOnly");
     public bool Native => environment.IsDevelopment() || Enabled;
     public Uri Origin { get; } = ParseOrigin(config["Pilot:Origin"] ?? config["RENDER_EXTERNAL_URL"], config.GetValue<bool>("Pilot:Enabled"));
-    public bool Allows(string? email) => !Enabled || email is not null && emails.Contains(email);
+    public bool Allows(string? email) => !Enabled || IsInvited(email);
+    public bool IsInvited(string? email) => email is not null && emails.Contains(email);
 
     public X509Certificate2 LoadCertificate()
     {
-        if (emails.Count == 0 || string.IsNullOrWhiteSpace(config["Mail:Token"]) || string.IsNullOrWhiteSpace(config["Mail:From"]))
-            throw new InvalidOperationException("Configura los correos invitados y el remitente del piloto.");
+        if (emails.Count == 0) throw new InvalidOperationException("Configura los correos invitados al piloto.");
+        if (!PasswordOnly && (string.IsNullOrWhiteSpace(config["Mail:Token"]) || string.IsNullOrWhiteSpace(config["Mail:From"])))
+            throw new InvalidOperationException("Configura el remitente del piloto o activa el ingreso solo por contraseña.");
         RequireDatabase(config.GetConnectionString("KhypuPyme"), application: true);
         var encoded = config["Pilot:CertificateBase64"];
         var password = config["Pilot:CertificatePassword"];

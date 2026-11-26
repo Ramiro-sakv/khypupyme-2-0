@@ -16,12 +16,13 @@ internal static class AccountServices
     {
         var services = builder.Services;
         var local = builder.Environment.IsDevelopment();
+        var localNetwork = LocalNetworkHosting.IsEnabled(builder.Environment);
         var certificate = pilot.Enabled ? pilot.LoadCertificate() : null;
         var keyDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "KhypuPyme2.0", "keys");
-        if (local)
+            "KhypuPyme2.0", localNetwork ? "keys-lan" : "keys");
+        if (local || localNetwork)
         {
-            var keys = services.AddDataProtection().SetApplicationName("KhypuPyme2.Local")
+            var keys = services.AddDataProtection().SetApplicationName(localNetwork ? "KhypuPyme2.Lan" : "KhypuPyme2.Local")
                 .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory));
             if (OperatingSystem.IsWindows()) keys.ProtectKeysWithDpapi();
         }

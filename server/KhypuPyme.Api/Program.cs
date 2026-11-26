@@ -14,9 +14,16 @@ using Microsoft.EntityFrameworkCore;
 
 var provisionClients = args.Contains("--register-native-clients", StringComparer.Ordinal);
 var migrate = args.Contains("--migrate-pilot", StringComparer.Ordinal);
-var builder = WebApplication.CreateBuilder(provisionClients || migrate ? [] : args);
+var createPilotAccount = args.Contains("--create-pilot-account", StringComparer.Ordinal);
+var builder = WebApplication.CreateBuilder(provisionClients || migrate || createPilotAccount ? [] : args);
 var pilot = new PilotOptions(builder.Configuration, builder.Environment);
+var localNetwork = LocalNetworkHosting.Configure(builder, pilot);
 if (pilot.Enabled) builder.Configuration["AllowedHosts"] = pilot.Origin.Host + ";localhost;127.0.0.1";
+if (pilot.PasswordOnly)
+{
+    builder.Configuration["Google:ClientId"] = "";
+    builder.Configuration["Google:ClientSecret"] = "";
+}
 builder.Services.AddSingleton(pilot);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<SafeErrors>();
@@ -28,7 +35,9 @@ builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict);
 
 var connectionString = builder.Configuration.GetConnectionString("KhypuPyme");
-if (migrate) PilotOptions.RequireDatabase(connectionString, application: false);
+if (migrate || createPilotAccount) PilotOptions.RequireDatabase(connectionString, application: false);
+if (createPilotAccount && (pilot.Enabled || !builder.Environment.IsProduction()))
+    throw new InvalidOperationException("Crea la cuenta desde la consola de administración, sin iniciar el servicio del piloto.");
 builder.Services.AddDbContext<KhypuPymeDbContext>(options => options.UseNpgsql(connectionString));
 builder.AddAccounts(pilot);
 builder.Services.AddCors(options => options.AddPolicy("native", rule => rule
@@ -55,6 +64,11 @@ builder.Services.AddScoped<BusinessRemoval>();
 builder.Services.AddScoped<AccountActions>();
 
 var app = builder.Build();
+if (createPilotAccount)
+{
+    await PilotAccountProvisioning.CreateAsync(app.Services, pilot);
+    return;
+}
 if (migrate)
 {
     await using var scope = app.Services.CreateAsyncScope();
@@ -86,6 +100,7 @@ if (pilot.Enabled)
     });
     await NativeAuthorization.RegisterClientsAsync(app.Services, app.Configuration);
 }
+localNetwork?.Use(app);
 app.UseExceptionHandler();
 if (app.Environment.WebRootFileProvider.GetFileInfo("index.html").Exists) { app.UseDefaultFiles(); app.UseStaticFiles(); }
 app.UseRouting();
@@ -94,7 +109,16 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 
-if (app.Environment.IsDevelopment()) app.MapOpenApi();
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.UseSwaggerUI(options =>
+    {
+        options.DocumentTitle = "API de KhypuPyme 2.0";
+        options.SwaggerEndpoint("/openapi/v1.json", "KhypuPyme 2.0 · API v1");
+        options.EnableFilter();
+    });
+}
 
 app.MapGroup("/api/v1/health").WithTags("Health").MapHealthEndpoints();
 app.MapAccounts();

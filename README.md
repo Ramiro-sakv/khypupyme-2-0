@@ -62,6 +62,44 @@ Abre [KhypuPyme 2.0](http://127.0.0.1:5282/). La API de desarrollo usa
 `127.0.0.1:5182`. Para arrancar con la base de pruebas y el puerto 5183,
 ejecuta `.\scripts\Start-Api.ps1 -Database Test`.
 
+## Compartir el negocio en la red local
+
+En la computadora que ya tiene PostgreSQL, ejecuta desde la raíz del proyecto:
+
+```powershell
+pnpm --dir web build
+dotnet build KhypuPyme.slnx -c Release
+.\scripts\Start-Lan.ps1
+```
+
+El script muestra la dirección HTTPS y la ruta al archivo público
+`KhypuPyme-Red-Local.cer`. Usa `-InterfaceAlias 'Wi-Fi'` si hay varios adaptadores.
+Mantén la computadora encendida y abre la misma dirección desde los navegadores
+de los dispositivos del negocio. Si cambia la dirección IP, reinicia el script
+y utiliza la dirección nueva.
+
+En una red de confianza, selecciona el perfil **Privada** en Windows y ejecuta
+desde PowerShell como administrador:
+
+```powershell
+.\scripts\Start-Lan.ps1 -ConfigurePrivateFirewall
+```
+
+La regla se limita al puerto HTTPS del servicio, el adaptador y su subred.
+Transfiere el archivo `.cer` generado por la computadora a los dispositivos por un
+medio de confianza y configúralos para que confíen en él antes de abrir la aplicación.
+En iPhone o iPad, activa también la confianza SSL en **Ajustes → General → Información
+→ Ajustes de confianza de certificados**. Los instaladores del piloto en línea usan otro perfil.
+
+Ingresa con una cuenta existente de la base local. La API valida inventario y Caja
+al confirmar cada movimiento. Para ver cambios que se hicieron en otro equipo,
+vuelve a consultar la vista. Los borradores se guardan en el navegador que los creó.
+El alta y la recuperación por correo se realizan en el entorno de desarrollo
+hasta configurar el envío para este perfil.
+
+La prueba `.\scripts\Test-Lan.ps1` usa la base aislada `khypupyme2_test` y hasta cinco
+sesiones HTTPS. Comprueba los movimientos concurrentes y el rechazo por falta de existencias.
+
 ## Ingreso y negocios
 
 Para registrar una cuenta o recuperar la contraseña, solicita el código desde el portal.
@@ -102,6 +140,7 @@ El piloto alojado requerirá claves persistentes y verificar el retorno y el alm
 - `GET /api/v1/health/api` verifica que la API responde.
 - `GET /api/v1/health/database` verifica el acceso a PostgreSQL y al esquema migrado.
 - `GET /openapi/v1.json` sirve el contrato en el perfil de desarrollo de la API.
+- [Swagger UI](http://127.0.0.1:5182/swagger/) muestra el contrato y permite probar rutas en desarrollo. Para empezar, abre **Health**, elige una ruta **GET** y pulsa **Try it out** y **Execute**.
 - `& 'C:\Program Files\PostgreSQL\18\bin\pg_isready.exe' -h 127.0.0.1 -p 5432` comprueba PostgreSQL directamente.
 
 Si cambia el contrato, compila y regenera los tipos de TypeScript.

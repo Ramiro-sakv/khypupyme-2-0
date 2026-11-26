@@ -8,6 +8,8 @@ services:
     envVars:
       - key: Pilot__Enabled
         value: "true"
+      - key: Pilot__PasswordOnly
+        value: "true"
       - key: Pilot__UseRenderProxy
         value: "true"
       - key: Pilot__AllowedEmails
@@ -17,8 +19,4 @@ services:
       - key: Pilot__CertificatePassword
         sync: false
       - key: ConnectionStrings__KhypuPyme
-        sync: false
-      - key: Mail__From
-        sync: false
-      - key: Mail__Token
         sync: false

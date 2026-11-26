@@ -4621,6 +4621,8 @@ export interface components {
             accountId: null | string;
             /** @default false */
             localMailbox: boolean;
+            localNetwork: boolean;
+            passwordOnly: boolean;
         };
         SettingsInput: {
             /** Format: uuid */
