@@ -1,3 +1,5 @@
+// Presenta el informe con barras y cifras por periodo, de modo que se pueda ver el efecto de ventas, gastos y compras en fechas concretas.
+
 import { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { Alert, Button, Card, DataTable, EmptyState } from "../ui/Primitives";
@@ -19,6 +21,7 @@ const compact = new Intl.NumberFormat("es-BO", { notation: "compact", maximumFra
 
 const values = (day: Day) => metrics.map(({ key }) => key === "resultMinor" ? reportResult(day) : day[key]);
 
+// Agrupa los días que devuelve la API en intervalos de visualización. Así se pueden comparar semanas o meses usando las mismas cifras de origen.
 function groupDays(days: Day[], period: "day" | "week" | "month") {
   const buckets = new Map<string, Group>();
   for (const day of days) {

@@ -1,3 +1,5 @@
+// Muestra el estado de la API y de PostgreSQL por separado. Sirve para distinguir si responde el servidor y si puede usar el esquema de la base.
+
 import { useEffect, useState } from "react";
 import type { paths } from "./api/schema";
 
@@ -18,6 +20,7 @@ const labels: Record<Check, string> = {
   "schema-not-ready": "Esquema pendiente",
 };
 
+// Interpreta el estado HTTP y el campo status del JSON. Un 503 puede indicar que falta configurar la conexión o preparar el esquema.
 async function check(path: HealthPath, signal: AbortSignal): Promise<Check> {
   try {
     const response = await fetch(apiUrl(path), { signal, cache: "no-store" });
@@ -39,6 +42,7 @@ export function StatusPage() {
 
   useEffect(() => {
     const controller = new AbortController();
+    // El tiempo límite permite mostrar el fallo en vez de dejar el indicador pendiente indefinidamente. Al salir de la vista también se cancela la consulta.
     const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(8000)]);
 
     for (const { path } of services) {

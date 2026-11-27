@@ -1,3 +1,5 @@
+// Permite elegir el lote de origen de alimento para mascotas al fraccionarlo. Así el detalle de venta puede conservar la partida de la que salió.
+
 import { useState } from "react";
 import { useCommerceData } from "../commerce/CommerceContext";
 import { LoadFeedback, Pages } from "../commerce/CommerceUi";

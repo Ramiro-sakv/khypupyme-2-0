@@ -1,5 +1,7 @@
+// Estas clases representan el negocio, su configuración y la última selección de cada cuenta.
 namespace KhypuPyme.Api.Businesses;
 
+// Id identifica el negocio y OwnerId lo enlaza con su cuenta. Una misma cuenta puede administrar varios negocios.
 public sealed class Business
 {
     public Guid Id { get; init; }
@@ -10,6 +12,7 @@ public sealed class Business
     public required string CreationDigest { get; init; }
 }
 
+// Separa datos de contacto y preferencias cambiantes de la identidad del negocio.
 public sealed class BusinessSettings
 {
     public Guid BusinessId { get; init; }
@@ -27,6 +30,7 @@ public sealed class BusinessSettings
     public OperatingPolicy Policy() => new(PolicyRevision, DefaultPayment, MaxDiscountPercent, QuoteDays, AllowNewCredit, LotAlertDays);
 }
 
+// Guarda una selección por dueño para recordar el negocio activo al volver a entrar.
 public sealed class AccountSelection
 {
     public Guid OwnerId { get; init; }

@@ -1,3 +1,5 @@
+// Busca unidades por serie y consulta su recorrido de compra, venta, garantía e inspección.
+
 import { useState } from "react";
 import type { components } from "../api/schema";
 import { Alert, Button, Card, DataTable, SelectField, TextField } from "../ui/Primitives";
@@ -39,6 +41,7 @@ export function SerialHistory({ initial, filter }: { initial?: string; filter?: 
   </div>;
 }
 
+// Muestra la ficha de la unidad y sus eventos confirmados para distinguir lo que pasó a ese equipo concreto.
 export function UnitDetails({ serial, close }: { serial: string; close: () => void }) {
   const data = useCommerceData<UnitHistory>("/serial?" + new URLSearchParams({ serial }));
   const { showDocument, readOnly } = useCommerce();
@@ -74,6 +77,7 @@ export function UnitDetails({ serial, close }: { serial: string; close: () => vo
   </Card>;
 }
 
+// Registra el cambio del caso de garantía con la referencia de la unidad y la venta.
 function WarrantyEditor({ serial, saleId, code, close }: { serial: string; saleId: string; code: "open" | "resolved"; close: () => void }) {
   const [note, setNote] = useState("");
   const form = useCommercialForm();
@@ -87,6 +91,7 @@ function WarrantyEditor({ serial, saleId, code, close }: { serial: string; saleI
   </OperationForm>;
 }
 
+// Captura el resultado que se exige para decidir el estado que tendrá el equipo después de la inspección.
 function InspectionEditor({ serial, close }: { serial: string; close: () => void }) {
   const [result, setResult] = useState("available");
   const [note, setNote] = useState("");

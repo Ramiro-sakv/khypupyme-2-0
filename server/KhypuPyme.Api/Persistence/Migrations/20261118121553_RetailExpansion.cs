@@ -3,12 +3,14 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+// Añade datos para reservar lotes, clasificar cosméticos y controlar envases retornables.
 namespace KhypuPyme.Api.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class RetailExpansion : Migration
     {
         /// <inheritdoc />
+        // Registra envases como cantidades por cliente y tipo. Un historial separado permite explicar cada entrega o devolución.
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<bool>(
@@ -171,6 +173,7 @@ namespace KhypuPyme.Api.Persistence.Migrations
         }
 
         /// <inheritdoc />
+        // Retira las tablas de envases y las extensiones de catálogo y lotes de este paso.
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(

@@ -1,3 +1,5 @@
+// Consulta un periodo y presenta las cifras comerciales devueltas por la API. La exportación usa los datos del informe que se está viendo.
+
 import { useState } from "react";
 import { ReportChart } from "./ReportChart";
 import { Alert, Button, Card, TextField } from "../ui/Primitives";

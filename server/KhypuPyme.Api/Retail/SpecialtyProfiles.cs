@@ -3,6 +3,7 @@ using KhypuPyme.Api.Commerce;
 using Microsoft.EntityFrameworkCore;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Este módulo configura variantes, repuestos, equipos y servicios de impresión que requieren datos adicionales en la ficha.
 namespace KhypuPyme.Api.Retail;
 
 public sealed record ProductDetail(string Reference, string Measure, string Shelf, string Brand = "", string Model = "");
@@ -40,6 +41,7 @@ internal static class SpecialtyProfiles
     public static bool HasVariants(string industry) => industry is "clothing" or "footwear";
     public static bool HasEquipment(string industry) => industry is "appliances" or "electronics";
 
+    // Reconstruye la proyección que usa el catálogo a partir de los datos especializados de cada producto.
     public static ProductSpecialty? Read(Product product) =>
         product.DetailJson is null && product.PartsJson is null && product.PrintingSize is null && product.CountUnit is null && product.MaterialJson is null ? null :
         new(Parse<ProductDetail>(product.DetailJson), Parse<PartsProfile>(product.PartsJson),
@@ -48,6 +50,7 @@ internal static class SpecialtyProfiles
     private static T? Parse<T>(string? json) where T : class =>
         json is null ? null : JsonSerializer.Deserialize<T>(json);
 
+    // Valida la ficha de acuerdo con el rubro y actualiza los datos especializados que usarán el buscador y el cobro.
     public static async Task SaveAsync(CommerceTransaction work, Product product)
     {
         var input = work.Command;
@@ -108,6 +111,7 @@ internal static class SpecialtyProfiles
         if (industry == "footwear" && product.Model is not null) product.CountUnit = "pair";
     }
 
+    // Normaliza marca, modelo y años declarados para que el filtro de compatibilidad compare datos en el mismo formato.
     private static VehicleFitment Normalize(VehicleFitment? row)
     {
         if (row is null || row.FromYear is < 1900 or > 2200 || row.ToYear < row.FromYear || row.ToYear > 2200)
@@ -115,6 +119,7 @@ internal static class SpecialtyProfiles
         return row with { Brand = Text(row.Brand, 80, "la marca del vehículo", true), Model = Text(row.Model, 80, "el modelo del vehículo", true) };
     }
 
+    // Cuenta caras impresas según la configuración del trabajo. El detalle permite justificar por qué cambia el importe al elegir doble cara.
     public static PrintingDetail Printing(Product product, PrintingInput? input, bool selling)
     {
         if (product.PrintingSize is null || !selling || input is null || input.Copies is < 1 or > 1_000_000 ||

@@ -1,7 +1,10 @@
+// Describe los datos comerciales que Entity Framework sigue y guarda. CommerceModel define cómo se representan estos tipos en PostgreSQL.
 namespace KhypuPyme.Api.Commerce;
 
+// BusinessId identifica a qué negocio pertenece un registro. Las consultas y relaciones comerciales usan este identificador para respetar ese contexto.
 internal interface IBusinessRecord { Guid BusinessId { get; } }
 
+// La ficha conserva datos del catálogo y saldos que el servidor actualiza. Sus campos especializados permiten manejar madera, unidades de venta o equipos.
 internal sealed class Product : IBusinessRecord
 {
     public Guid BusinessId { get; init; }
@@ -57,17 +60,21 @@ internal sealed class Customer : IBusinessRecord
     public string Phone { get; set; } = "";
 }
 
+// La sesión conserva tanto el fondo inicial como el efectivo esperado. Guardar ambas cifras permite explicar la diferencia con los movimientos del historial.
 internal sealed class CashSession : IBusinessRecord
 {
     public Guid BusinessId { get; init; }
     public Guid Id { get; init; }
     public DateTimeOffset OpenedAt { get; init; }
     public DateTimeOffset? ClosedAt { get; set; }
+    // Minor indica unidades menores de la moneda. En bolivianos, Bs 15.000,00 se guarda como 1500000 centavos.
     public long OpeningMinor { get; init; }
+    // Es el efectivo que debería quedar según los movimientos registrados. El dinero realmente contado se registra al cerrar.
     public long ExpectedMinor { get; set; }
     public long? CountedMinor { get; set; }
 }
 
+// Es la cabecera de una operación. Reúne su número, fecha, totales y referencias a Caja, cliente u operación de origen cuando corresponden.
 internal sealed class Entry : IBusinessRecord
 {
     public Guid BusinessId { get; init; }
@@ -99,6 +106,7 @@ internal sealed class Entry : IBusinessRecord
     public List<EntryLine> Lines { get; } = [];
 }
 
+// Conserva los datos de una línea tal como se confirmó, incluidos el precio y los detalles de la operación.
 internal sealed class EntryLine : IBusinessRecord
 {
     public Guid BusinessId { get; init; }
@@ -124,6 +132,7 @@ internal sealed class EntryLine : IBusinessRecord
         ? new(l, t, w) : null;
 }
 
+// Mantiene el saldo por cobrar ligado a la operación original. Así un cobro puede actualizar esa deuda concreta.
 internal sealed class Receivable : IBusinessRecord
 {
     public Guid BusinessId { get; init; }
@@ -133,6 +142,7 @@ internal sealed class Receivable : IBusinessRecord
     public long BalanceMinor { get; set; }
 }
 
+// Conserva el vínculo entre la solicitud y su resultado para que repetir una petición confirmada no duplique la operación.
 internal sealed class CommerceReceipt
 {
     public Guid AccountId { get; init; }

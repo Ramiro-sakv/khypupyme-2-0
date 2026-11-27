@@ -3,12 +3,14 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+// Incorpora tarifas, medidas de madera y sesiones de práctica. Un producto puede tener stock en varias medidas distintas.
 namespace KhypuPyme.Api.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class TimberAndPractice : Migration
     {
         /// <inheritdoc />
+        // Agrega un identificador de línea para representar varias medidas del mismo producto dentro de una operación.
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropPrimaryKey(
@@ -217,6 +219,7 @@ namespace KhypuPyme.Api.Persistence.Migrations
         }
 
         /// <inheritdoc />
+        // Quita las estructuras de madera y práctica, además de los campos que se agregaron a las fichas y líneas.
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql("DROP POLICY timber_practice_remove ON khypupyme.businesses;");

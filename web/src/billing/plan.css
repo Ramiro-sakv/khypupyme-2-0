@@ -1,3 +1,5 @@
+/* Controla el panel de planes, el pago de demostración y el historial de intentos. */
+
 .plan-page {
   width: min(100%, 64rem);
   display: grid;
@@ -20,6 +22,8 @@
 .plan-photo { margin-inline-start: auto; width: min(30%, 13rem); height: 6.5rem; border-radius: .7rem; object-fit: cover; }
 @media (max-width: 32rem) { .plan-photo { display: none; } }
 .plan-business-icon { display: grid; place-items: center; border: 1px solid #ffffff66; border-radius: .9rem; width: 2.8rem; height: 2.8rem; flex: none; }
+
+/* Las tarjetas de planes tienen el mismo ancho para poder comparar precios y acciones. */
 .plan-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .85rem; }
 .plan-option { display: grid; gap: .7rem; align-content: start; grid-template-rows: auto auto minmax(2.5rem, auto) 1fr auto; }
 .plan-option h3, .plan-trial p, .plan-payment p { margin: 0; }
@@ -51,6 +55,7 @@
 .plan-history { list-style: none; margin: 0; padding: 0; }
 .plan-history li { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .6rem; border-bottom: 1px solid #dadfd7; padding: .75rem 0; }
 .plan-history li:last-child { border-bottom: 0; padding-bottom: 0; }
+/* Apila el contenido cuando disminuye el ancho para mantener accesibles las acciones del pago. */
 @media (max-width: 670px) {
   .plan-choices { grid-template-columns: 1fr; }
   .plan-option { grid-template-rows: none; }

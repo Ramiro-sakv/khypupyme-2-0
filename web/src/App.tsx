@@ -1,3 +1,5 @@
+// Elige la pantalla inicial y coordina la sesión. Con una cuenta autenticada, abre el selector o el último negocio autorizado.
+
 import { useEffect, useState } from "react";
 import type { components } from "./api/schema";
 import { change, get, linkGoogle } from "./api/client";
@@ -25,6 +27,7 @@ export function App() {
   return <AccountApp />;
 }
 
+// La sesión se consulta a la API. Con esa respuesta se decide si mostrar el ingreso o el espacio de una cuenta.
 function AccountApp() {
   const [session, setSession] = useState<Session | null>(null);
   const [error, setError] = useState("");
@@ -37,7 +40,11 @@ function AccountApp() {
     const abort = new AbortController();
     void get<Session>(auth + "/session", abort.signal).then((result) => {
       if (!abort.signal.aborted) {
-        if (result.email && returnTo) { location.assign(returnTo); return; }
+        // Si el ingreso empezó en un cliente instalado, continúa la autorización tras comprobar la sesión.
+        if (result.email && returnTo) {
+          location.assign(returnTo);
+          return;
+        }
         setSession(result);
         setLoading(false);
       }
@@ -50,16 +57,22 @@ function AccountApp() {
     return () => abort.abort();
   }, [revision]);
 
+  // Después de iniciar o cerrar sesión se pide al servidor su estado. Así React actualiza la pantalla a partir de la sesión real.
   async function refreshSession() {
     setSession(await get<Session>(auth + "/session"));
   }
 
+  // Organiza las acciones de sesión y los mensajes al usuario en un solo lugar.
   async function accountAction(action: () => Promise<void>) {
     setActing(true);
     setError("");
-    try { await action(); }
-    catch (failure) { setError(failure instanceof Error ? failure.message : "No se pudo completar la solicitud."); }
-    finally { setActing(false); }
+    try {
+      await action();
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "No se pudo completar la solicitud.");
+    } finally {
+      setActing(false);
+    }
   }
 
   const accountControls = session?.email && <section className="account-controls" aria-labelledby="account-controls-title">

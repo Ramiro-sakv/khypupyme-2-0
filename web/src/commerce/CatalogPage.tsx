@@ -1,3 +1,5 @@
+// Coordina Almacén, Catálogo y las fichas que se abren desde esas vistas. Distingue cómo se presentan y editan las existencias y los productos.
+
 import { useState } from "react";
 import { InventoryDrawer } from "./InventoryDrawer";
 import { OperationHeading } from "./OperationHeading";
@@ -41,6 +43,7 @@ export function CatalogPage({ units, industry, focus, onStockIn, lotAlertDays = 
     ...(status ? { active: status } : {}), ...(filter ? { attention: filter } : {}), ...(industry === "spareParts" ? vehicleQuery(vehicle) : {}) }) : null);
 
   const panelOpen = editing ?? (variants || loss || correction || opening || stock);
+  // Cierra la ficha abierta para volver a la lista con su búsqueda y filtros.
   function closePanel() {
     setEditing(null); setStock(undefined); setVariants(false); setLoss(undefined); setOpening(undefined); setCorrection(undefined);
   }
@@ -145,6 +148,7 @@ export function CatalogPage({ units, industry, focus, onStockIn, lotAlertDays = 
   </div>;
 }
 
+// El rubro define qué datos adicionales necesita la ficha, como las tarifas de madera, series, lotes o variantes.
 function ProductEditor({ product, timberIndustry, industry, onClose }: { product?: Product; timberIndustry: boolean; industry?: string; onClose: () => void }) {
   const [name, setName] = useState(product?.name ?? "");
   const autoCode = ["timber", "convenience", "clothing", "appliances"].includes(industry ?? "");
@@ -209,6 +213,7 @@ function ProductEditor({ product, timberIndustry, industry, onClose }: { product
   </OperationForm>;
 }
 
+// Captura una pérdida desde el producto consultado. El servidor verifica su cantidad y escribe el movimiento que la explica.
 function LossEditor({ product, timber, available, lot, onClose, onDone }: {
   product: Product; timber?: Dimensions; available?: number; lot?: Lot; onClose: () => void; onDone: (id: string) => void;
 }) {
@@ -233,6 +238,7 @@ function LossEditor({ product, timber, available, lot, onClose, onDone }: {
   </OperationForm>;
 }
 
+// Puede usarse desde Clientes o desde una venta. Devuelve el cliente guardado para que el formulario que lo abrió pueda seleccionarlo.
 export function CustomerEditor({ customer, onClose, onSaved }: {
   customer?: Customer; onClose: () => void; onSaved: (customer: Customer) => void;
 }) {

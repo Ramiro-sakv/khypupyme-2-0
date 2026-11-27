@@ -1,3 +1,5 @@
+// Contiene textos, ejemplos y ayudas por rubro. Cambiar una explicación aquí actualiza las pantallas que consultan esta guía.
+
 import type { IndustryId } from "./industryThemes";
 export interface IndustryGuide {
   title: string;
@@ -14,6 +16,7 @@ export interface IndustryGuide {
   example: string;
   caution: string;
 }
+// Cada clave es el mismo identificador que utiliza el perfil del negocio. Así la guía puede elegirse con los datos que devuelve la API.
 export const INDUSTRY_GUIDES: Record<IndustryId, IndustryGuide> = {
   convenience: {
     title: "Vender rápido y reponer a tiempo",

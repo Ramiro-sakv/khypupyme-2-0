@@ -3,6 +3,7 @@ using KhypuPyme.Api.Persistence;
 using Microsoft.EntityFrameworkCore;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Una entrega o un retiro se vincula a una venta existente. Despachar cambia el estado logístico de la venta.
 namespace KhypuPyme.Api.Retail;
 
 public sealed record DeliveryInput(string Mode, DateOnly Day, string? Address = null);
@@ -25,6 +26,7 @@ internal sealed class FurnitureDeliveries(CommerceTransaction work)
 {
     public static bool Supported(string industry) => industry is "furniture" or "cement" or "ceramics" or "hardware" or "beverages" or "timber";
 
+    // Despacha la acción de entrega según su estado actual. La venta de origen permite revisar qué mercancía se va a entregar.
     public async Task<Guid> ExecuteAsync()
     {
         if (!Supported(work.Business.Industry))
@@ -87,6 +89,7 @@ internal sealed class FurnitureDeliveries(CommerceTransaction work)
         return sale.Id;
     }
 
+    // Filtra encargos por modalidad y estado para que el comercio distinga retiros, envíos y entregas completadas.
     public static Task<CommercePage<DeliveryInfo>> ListAsync(KhypuPymeDbContext db, string? filter, string? mode,
         string? search, DateOnly today, int? page, CancellationToken ct)
     {
@@ -114,6 +117,7 @@ internal sealed class FurnitureDeliveries(CommerceTransaction work)
         return CommerceReads.PageAsync(Describe(rows), page, ct);
     }
 
+    // Resume las entregas que requieren atención para el panel del negocio.
     public static async Task<DeliveryAttention> AttentionAsync(KhypuPymeDbContext db, DateOnly today, CancellationToken ct) =>
         await Pending(Rows(db)).GroupBy(_ => 1)
             .Select(group => new DeliveryAttention(group.Count(x => x.Delivery.Day == today), group.Count(x => x.Delivery.Day < today),

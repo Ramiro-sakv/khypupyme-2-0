@@ -1,3 +1,5 @@
+// Muestra los planes y el pago de demostración. Cada intento usa una tarjeta de ejemplo y el estado registrado por la API.
+
 import { useState } from "react";
 import { change } from "../api/client";
 import type { components } from "../api/schema";
@@ -39,6 +41,7 @@ export function PlanPanel({ business, path, status, error, reload, back, enter, 
   const theme = industryTheme(business.industry);
   const plan = status?.plans.find((option) => option.id === planId);
   const recent = status?.payments[0];
+  // Localiza intentos pendientes para que el usuario pueda continuar uno después de recargar la aplicación.
   const pending = status?.payments.find((item) => item.state === "pending");
   const persisted = status?.payments.find((item) => item.id === result?.id);
   const latest = result && (!persisted || (persisted.state === "pending" && result.state !== "pending")) ? result : persisted ?? recent;
@@ -56,6 +59,7 @@ export function PlanPanel({ business, path, status, error, reload, back, enter, 
     } finally { setBusy(false); }
   }
 
+  // Conserva el identificador del intento al enviarlo. Si la respuesta se pierde, se puede recuperar el mismo intento desde el panel.
   function begin() {
     if (!plan || !cardId) return;
     const id = attemptId || crypto.randomUUID();
@@ -67,6 +71,7 @@ export function PlanPanel({ business, path, status, error, reload, back, enter, 
     });
   }
 
+  // Pide al servidor pasar el intento a otro estado y actualiza el panel con el resultado devuelto.
   function transition(payment: Payment, action: string) {
     void run(async () => {
       const updated = await change<Payment>(path + "/attempts/" + payment.id, "POST", { action });

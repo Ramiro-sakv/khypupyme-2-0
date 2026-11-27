@@ -19,3 +19,8 @@ web/src-tauri/gen/
 *.key
 *.backup
 *.dump
+
+# Respaldos cifrados e identidades privadas de age
+*.agekey
+*.pgdump.age
+*.pgdump.age.partial

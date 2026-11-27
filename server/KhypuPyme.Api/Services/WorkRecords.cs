@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using KhypuPyme.Api.Commerce;
 
+// Una cita o una orden de trabajo tiene su propio estado antes del cobro. El vínculo con la venta permite recuperar después la operación que la liquidó.
 namespace KhypuPyme.Api.Services;
 
 public sealed record WorkInput(string Title, DateOnly Day, Guid? ServiceId = null, int? StartMinute = null, int? Duration = null,
@@ -14,6 +15,7 @@ public sealed record WorkDetails(string? Tasks = null, string? PlannedMaterials 
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? InternalMaterials = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? StatusNote = null)
 {
+    // Deserializa los detalles de un rubro para que sus campos vuelvan a estar disponibles como propiedades de C#.
     internal static WorkDetails Read(string json) => JsonSerializer.Deserialize<WorkDetails>(json)!;
 }
 
@@ -24,6 +26,7 @@ public sealed record WorkInfo(Guid Id, string Title, string Industry, Guid Custo
     DateOnly Day, int? StartMinute, int? Duration, long? BudgetMinor, string? Address, WorkDetails Details,
     string State, int Revision, Guid? SaleId, Guid? ReceiptId, DateOnly? DeliveredOn);
 
+// Guarda el cliente, servicio y evolución de una cita u orden. La revisión protege contra ediciones hechas desde formularios anteriores.
 internal sealed class WorkItem : IBusinessRecord
 {
     public Guid BusinessId { get; init; }

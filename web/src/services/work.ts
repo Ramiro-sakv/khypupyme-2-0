@@ -1,3 +1,5 @@
+// Comparte nombres, estados y ayudas de fechas para las pantallas de servicio.
+
 import type { components } from "../api/schema";
 
 export type Work = components["schemas"]["WorkInfo"];
@@ -12,10 +14,12 @@ export const workNavigation: Record<string, { title: string; create: string; tod
   crafts: { title: "Encargos", create: "Nuevo encargo", today: "Encargos para hoy" },
 };
 
+// Usa la fecha de Bolivia para abrir la agenda en el día que corresponde al negocio.
 export const todayInBolivia = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "America/La_Paz" }).format(new Date());
 export function clockTime(minutes: number) {
   return [Math.floor(minutes / 60), minutes % 60].map((part) => String(part).padStart(2, "0")).join(":");
 }
+// Ayuda a mostrar el acceso al cobro solo cuando el estado de la orden admite ese paso.
 export function canBillWork(work: Work) {
   return !work.saleId && ["attended", "ready", "delivered"].includes(work.state);
 }

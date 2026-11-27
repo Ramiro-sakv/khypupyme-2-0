@@ -1,3 +1,5 @@
+// Añade controles de ferretería, repuestos, calzado, electrónica e impresión a fichas y búsquedas compartidas.
+
 import { useState } from "react";
 import type { components } from "../api/schema";
 import { Button, DataTable, SelectField, TextField } from "../ui/Primitives";
@@ -22,6 +24,7 @@ export function initialSpecialty(product?: Product): SpecialtyForm {
     color: product?.specialty?.printing?.color ?? "bw" };
 }
 
+// Convierte los datos del editor en el formato de ficha que corresponde a la actividad.
 export function specialtyCommand(industry: string | undefined, printing: boolean, fields: SpecialtyForm) {
   const detail = ["hardware", "electronics", "spareParts"].includes(industry ?? "");
   return {
@@ -98,6 +101,7 @@ export function CompatibilityFilter({ onChange }: { onChange: (value: VehicleFil
   </form>;
 }
 
+// Convierte el filtro de compatibilidad en parámetros para enviarlo a la API. De esa forma la búsqueda se filtra antes de mostrar una página de resultados.
 export function vehicleQuery(filter: VehicleFilter) {
   return Object.fromEntries(Object.entries(filter).map(([key, value]) => [key, value.trim()]).filter(([, value]) => value !== ""));
 }
@@ -113,6 +117,7 @@ export function searchLabel(industry?: string) {
   }
 }
 
+// Muestra los atributos guardados que ayudan a identificar una ficha o advertir que falta información de compatibilidad.
 export function SpecialtySummary({ product }: { product: Product }) {
   const parts = product.specialty?.parts;
   return <>

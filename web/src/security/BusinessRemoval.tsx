@@ -1,3 +1,5 @@
+// Reúne protección del negocio, auditoría y recuperación de bajas en curso. Muestra los requisitos que hay que resolver antes de iniciar una baja.
+
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { ApiError, change, get } from "../api/client";
@@ -35,6 +37,7 @@ export function BusinessProtection({ profile, onRemoved }: { profile: BusinessPr
   </>;
 }
 
+// Conserva el paso y la confirmación del flujo. La operación debe corresponder al negocio cuyo nombre se muestra.
 function RemovalForm({ profile, hide, onRemoved }: { profile: BusinessProfile; hide: () => void; onRemoved: (message: string) => void }) {
   const workspace = useCommerce();
   const path = jobsPath + "/" + profile.id;
@@ -47,6 +50,7 @@ function RemovalForm({ profile, hide, onRemoved }: { profile: BusinessProfile; h
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [frozen, setFrozen] = useState(false);
+  // Consulta si faltan reconocer resultados comerciales. La baja no debe empezar mientras todavía se tenga que resolver una operación incierta.
   const pending = useCommerceData<CommandResult[]>("/unconfirmed");
   const blocked = !workspace.ready || !!workspace.pending || !pending.data || pending.data.length > 0 || workspace.busy;
 
@@ -154,6 +158,7 @@ export function RemovalJobs({ accountId }: { accountId: string }) {
     return () => abort.abort();
   }, []);
 
+  // Continúa el trabajo registrado cuando una baja se interrumpió. La API mantiene el avance y valida de nuevo el acceso.
   async function resume(job: Job) {
     setBusy(true);
     setError("");
@@ -185,6 +190,7 @@ async function clearRemovedScopes(accountId: string, job: Job) {
   sessionStorage.removeItem(practice);
 }
 
+// Consulta el historial de correcciones para mostrar qué acción se hizo y el motivo que quedó registrado.
 function AuditList() {
   const [page, setPage] = useState(1);
   const result = useCommerceData<Page<Audit>>("/audit?page=" + page);

@@ -1,3 +1,5 @@
+// Traduce los grupos de madera del carrito a líneas para la API, con una cantidad por medida e importes según la operación.
+
 import { moneyLimit, parseMoney } from "../commerce/models";
 import type { CommandLine, Product } from "../commerce/models";
 import { captureTimber, exactVolume, measureKey, timberAmount, timberRate } from "./measures";
@@ -6,8 +8,10 @@ import type { Capture, Dimensions, Rates } from "./measures";
 export type TimberLine = { id: string; timber: Capture; rates?: Rates; cost: string; timberCostUnit?: "board-foot"; manualPrice?: string };
 export type WidthOrder = { timber: Dimensions; quantity: number; charged: number; subtotal: number | null };
 
+// La clave combina producto y dimensiones para no confundir dos especies con una medida igual.
 export const stockKey = (id: string, timber: Dimensions) => id + ":" + measureKey(timber);
 
+// Cada grupo se interpreta y se valora antes de preparar el comando. La compra puede usar costo por pieza o por pie tablar según el borrador y la línea.
 export function prepareTimber(lines: TimberLine[], products: Record<string, Product> | undefined, purchase: boolean) {
   const combined = new Map<string, CommandLine & { timber: Dimensions; unitMinor: number }>();
   let problem = "";

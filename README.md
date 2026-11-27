@@ -25,6 +25,9 @@ La evolución funcional está en [PROGRESO.md](PROGRESO.md) y el estudio de los 
 Para los instaladores privados y la configuración de Render y Neon, consulta [PILOTO.md](PILOTO.md).
 
 
+Consulta [Arquitectura y mantenimiento](docs/ARQUITECTURA.md) para comparar la
+estructura con otros proyectos, ubicar cambios por carpeta y preparar un respaldo cifrado.
+
 ## Preparación en Windows
 
 Requiere el SDK .NET 10.0.403, Node.js 24, pnpm 11.25.0 y PostgreSQL 18
@@ -97,11 +100,81 @@ de su plataforma y puede revocarlo en `/connect/revoke`. Windows usa
 Los tokens de este flujo local usan claves efímeras y requieren un nuevo ingreso tras reiniciar la API.
 El piloto alojado requerirá claves persistentes y verificar el retorno y el almacenamiento en cada instalador.
 
+## Leer el backend en Visual Studio
+
+Abre `server/KhypuPyme.Api` en el Explorador de soluciones. Los comentarios
+`//` explican el papel del archivo y el motivo de las decisiones junto al código.
+La sangría de cuatro espacios marca cada bloque dentro del anterior.
+
+| Carpeta | Qué vas a encontrar |
+| --- | --- |
+| `Accounts` | Registro, ingreso, recuperación, códigos y autorización de clientes instalados. |
+| `Businesses` | Negocios, rubros, preferencias y contexto que autoriza sus datos. |
+| `Commerce` | Catálogo, Almacén, Caja, compras, ventas, fiados, comprobantes e informes. |
+| `Timber`, `Retail`, `Services` | Reglas de madera, inventario especializado y órdenes de trabajo. |
+| `Security` | Confirmación de identidad, auditoría y solicitudes de baja. |
+| `Billing` | Planes, licencias y pagos de demostración de la app. |
+| `Health`, `Hosting` | Diagnóstico de API y base, opciones de ejecución y tratamiento de errores. |
+| `Persistence` | Correspondencia entre clases y tablas. Las migraciones registran los cambios que recibió el esquema. |
+| `Properties` | `launchSettings.json` define el perfil Local, el puerto 5182 y el entorno de desarrollo. `launchBrowser: false` indica que no se abre el navegador automáticamente. |
+
+Para seguir una venta, abre [Program.cs](server/KhypuPyme.Api/Program.cs) y busca
+`MapCommerce`. Sigue [CommerceEndpoints.cs](server/KhypuPyme.Api/Commerce/CommerceEndpoints.cs)
+hasta `ExecuteAsync` en [CommerceService.cs](server/KhypuPyme.Api/Commerce/CommerceService.cs).
+La venta llega a `SellAsync` en [TradeOperations.cs](server/KhypuPyme.Api/Commerce/TradeOperations.cs).
+Ahí puedes ver por qué se vuelve a comprobar el stock al confirmar y cómo se guarda el movimiento
+junto con la venta. [CommerceModel.cs](server/KhypuPyme.Api/Commerce/CommerceModel.cs) indica en qué
+tablas se guarda. En pgAdmin, expande `khypupyme2_dev` → **Schemas** → `khypupyme` → **Tables**.
+
+En `Persistence/Migrations`, `Up` aplica un cambio de esquema y `Down` describe su reversión.
+El prefijo numérico indica el orden. Los archivos `*.Designer.cs` y `*ModelSnapshot.cs`
+son generados por EF Core y describen el modelo. Para estudiar qué cambios se aplican, abre el
+archivo de migración con el mismo nombre y sin `.Designer`.
+
+`appsettings.json` define valores generales de configuración. `KhypuPyme.Api.csproj` declara
+la versión de .NET y las dependencias, y `packages.lock.json` fija las versiones resueltas.
+
+## Leer el frontend en Visual Studio
+
+Abre `web/src`. Los archivos `.tsx` contienen componentes React y su estructura
+visual. Los `.ts` reúnen tipos, peticiones y cálculos que usan esos componentes.
+Los comentarios `//` explican las decisiones junto al código. En los archivos de
+estilos, los comentarios `/* ... */` señalan qué ajuste controla cada zona.
+
+| Archivo o carpeta | Dónde mirar |
+| --- | --- |
+| [main.tsx](web/src/main.tsx) y [App.tsx](web/src/App.tsx) | Montaje de React, carga de estilos y elección de la pantalla según la sesión. |
+| `accounts` y `businesses` | Formularios de cuenta, selector, asistente y navegación del negocio activo. |
+| `commerce` | Almacén, ficha, carrito, Caja, historial, informes y PDF. |
+| `timber`, `retail` y `services` | Medidas, lotes, variantes, series y órdenes o citas. |
+| `security` y `billing` | Confirmación de identidad, bajas, planes y pagos de demostración. |
+| `ui` y estilos `.css` | Campos y botones compartidos, pestaña Revisar y ajustes para pantallas angostas. |
+| `api` y `native` | Peticiones HTTP y adaptación al navegador, Android y Windows. |
+
+Para seguir una venta, abre [TradePage.tsx](web/src/commerce/TradePage.tsx)
+y busca `canSend`. El componente conoce el borrador, el importe y los resultados
+de [stock.tsx](web/src/commerce/stock.tsx). Al confirmar, pasa el comando a
+[CommerceContext.tsx](web/src/commerce/CommerceContext.tsx), que guarda la
+solicitud local y la envía con [client.ts](web/src/api/client.ts). A partir de esa
+petición sigue el recorrido del backend descrito arriba. [ReviewDock.tsx](web/src/ui/ReviewDock.tsx)
+controla dónde aparece la revisión y dónde vuelve el foco al cerrarla.
+
+`vite.config.ts` une las rutas locales de React con la API. `package.json` declara
+las dependencias y comandos, `pnpm-lock.yaml` fija sus versiones y `tsconfig.json`
+configura el análisis de TypeScript. [api/schema.d.ts](web/src/api/schema.d.ts) se
+genera desde OpenAPI y declara cómo son las peticiones y respuestas de la API.
+Lee primero los comentarios de `paths`, luego busca `CommerceCommand` y
+`StockCheck`. `pnpm --dir web generate:api` conserva las notas de lectura que
+define [generate-api.mjs](web/scripts/generate-api.mjs).
+`android` y `src-tauri` empaquetan la interfaz para Android y Windows. Los
+recursos gráficos están en `web/src/assets`.
+
 ## Comprobar
 
 - `GET /api/v1/health/api` verifica que la API responde.
 - `GET /api/v1/health/database` verifica el acceso a PostgreSQL y al esquema migrado.
 - `GET /openapi/v1.json` sirve el contrato en el perfil de desarrollo de la API.
+- [Swagger UI](http://127.0.0.1:5182/swagger/) muestra el contrato y permite probar rutas en desarrollo. Para empezar, abre **Health**, elige una ruta **GET** y pulsa **Try it out** y **Execute**.
 - `& 'C:\Program Files\PostgreSQL\18\bin\pg_isready.exe' -h 127.0.0.1 -p 5432` comprueba PostgreSQL directamente.
 
 Si cambia el contrato, compila y regenera los tipos de TypeScript.

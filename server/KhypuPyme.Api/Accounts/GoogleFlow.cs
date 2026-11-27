@@ -3,16 +3,19 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using KhypuPyme.Api.Hosting;
 
+// Google confirma la identidad externa. KhypuPyme decide si ese correo puede entrar y cómo vincularlo con sus cuentas.
 namespace KhypuPyme.Api.Accounts;
 
 internal static class GoogleFlow
 {
     public const string VerifiedEmailClaim = "google_verified_email";
 
+    // Solo se habilita el proveedor cuando el servidor tiene ambos datos de configuración de Google.
     public static bool IsEnabled(IConfiguration configuration) =>
         !string.IsNullOrWhiteSpace(configuration["Google:ClientId"]) &&
         !string.IsNullOrWhiteSpace(configuration["Google:ClientSecret"]);
 
+    // Separa iniciar el ingreso, vincular una cuenta autenticada y procesar el retorno de Google.
     public static void MapGoogle(this RouteGroupBuilder group)
     {
         group.MapGet("/google/start", (string? returnTo, HttpContext http, IConfiguration configuration) =>
@@ -33,6 +36,7 @@ internal static class GoogleFlow
         group.MapGet("/google/complete", CompleteAsync);
     }
 
+    // Lee la identidad recibida al volver de Google. Comprueba el correo verificado antes de decidir si se puede iniciar o vincular una sesión.
     private static async Task<IResult> CompleteAsync(
         HttpContext context, UserManager<IdentityUser<Guid>> users, SignInManager<IdentityUser<Guid>> signIn,
         EmailCodes codes, PilotOptions pilot, CancellationToken ct)

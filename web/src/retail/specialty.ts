@@ -1,3 +1,5 @@
+// Reúne la descripción de los atributos especializados en texto. Permite mostrarlos de la misma forma cuando una ficha aparece en varias pantallas.
+
 import type { components } from "../api/schema";
 
 type Specialty = components["schemas"]["ProductSpecialty"];

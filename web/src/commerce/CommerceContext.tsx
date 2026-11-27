@@ -1,3 +1,5 @@
+// Provee a las pantallas el contexto comercial del negocio. Gestiona los envíos confirmados y las solicitudes cuyo resultado necesita consultarse.
+
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { ApiError, change, get } from "../api/client";
@@ -52,6 +54,7 @@ export function CommerceProvider({ accountId, businessId, businessName, children
     return () => { active = false; window.removeEventListener("focus", read); };
   }, [scope]);
 
+  // Comprueba primero que la respuesta sea del intento enviado. Luego avisa al servidor que se recibió el resultado y actualiza el historial de la pantalla.
   async function finish(record: PendingRecord, result: CommandResult) {
     if (result.operationId !== record.command.operationId || result.kind !== record.command.kind)
       throw new Error("La respuesta no coincide con la solicitud. Consulta su estado.");
@@ -71,13 +74,16 @@ export function CommerceProvider({ accountId, businessId, businessName, children
   async function send(record: PendingRecord) {
     let result: CommandResult;
     try {
+      // Envía la solicitud original, incluido el identificador que ya quedó guardado.
       result = await change<CommandResult>(path + "/commands", "POST", record.command);
     } catch (error) {
+      // Un rechazo definitivo libera la solicitud. El borrador queda disponible para corregirlo.
       if (error instanceof ApiError && [400, 401, 403, 404, 409, 422, 429].includes(error.status)) {
         await clearRequest(record, false);
         setPending(undefined);
         throw error;
       }
+      // Si se pierde la respuesta, el servidor podría haber confirmado la venta.
       setStatus("unknown");
       throw new Error("No se pudo confirmar la respuesta. Consulta la solicitud antes de reintentar.", { cause: error });
     }
@@ -88,6 +94,7 @@ export function CommerceProvider({ accountId, businessId, businessName, children
     }
   }
 
+  // Abre la confirmación de identidad para las correcciones que la necesitan. La comprobación de permisos se completa en el servidor.
   async function authorize(record: PendingRecord) {
     if (!practice && await needsIdentity(record.command, path))
       await new Promise<void>((resolve, reject) => setApproval({ record, resolve, reject }));
@@ -96,19 +103,29 @@ export function CommerceProvider({ accountId, businessId, businessName, children
   async function execute(input: CommandInput, draft?: DraftStamp) {
     if (readOnly && input.kind !== "close-cash") throw new Error("Activa un plan para registrar operaciones nuevas.");
     if (!ready) throw new Error("Espera a que se abra el registro local.");
-    const record = { scope, command: { ...input, operationId: crypto.randomUUID() }, draft };
+
+    // Este ID identifica un intento de venta. Se reutiliza si hay que consultar o reenviar la solicitud.
+    const record = {
+      scope,
+      command: { ...input, operationId: crypto.randomUUID() },
+      draft
+    };
+
     setBusy(true);
     setNotice("");
     try {
+      // Antes de hacer otro envío, hay que resolver el que esté pendiente para este negocio.
       const existing = await pendingRequest(scope);
       if (existing) {
         setPending(existing);
         throw new Error("Resuelve primero la solicitud pendiente de este negocio.");
       }
       await authorize(record);
+      // Reserva el intento en el navegador antes de comunicarlo a la API.
       const claimed = await reserveRequest(record);
       setPending(claimed);
       setStatus("unknown");
+      // Otra pestaña pudo reservar una solicitud durante la revisión.
       if (claimed.command.operationId !== record.command.operationId)
         throw new Error("Resuelve primero la solicitud pendiente de este negocio.");
       return await send(record);
@@ -116,6 +133,7 @@ export function CommerceProvider({ accountId, businessId, businessName, children
     finally { setBusy(false); }
   }
 
+  // Consulta el resultado en el servidor. Si el servidor responde que todavía no tiene ese registro, se habilita la opción de reintentar.
   async function inspect(record: PendingRecord) {
     setBusy(true);
     setNotice("");
@@ -132,6 +150,7 @@ export function CommerceProvider({ accountId, businessId, businessName, children
     } finally { setBusy(false); }
   }
 
+  // Comprueba que siga pendiente ese intento y reenvía la misma solicitud. El servidor puede reconocerla por su identificador.
   async function retry(record: PendingRecord) {
     setBusy(true);
     try {
@@ -174,6 +193,7 @@ export function useCommerce() {
   return value;
 }
 
+// Vincula cada lectura a la ruta y a la revisión del negocio. Al confirmar una operación, las consultas pueden actualizar sus datos.
 export function useCommerceData<T>(relative: string | null) {
   const { path, revision } = useCommerce();
   const resource = relative === null ? null : path + relative;

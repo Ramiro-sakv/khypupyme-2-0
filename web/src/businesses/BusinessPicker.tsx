@@ -1,3 +1,5 @@
+// Lista los negocios de la cuenta. Destaca la última selección y permite buscar o avanzar por páginas.
+
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { get } from "../api/client";
@@ -37,6 +39,7 @@ export function BusinessPicker({ industries, last, select, create, accountId }: 
     return () => abort.abort();
   }, [page, search, refresh]);
 
+  // Envía el texto como criterio de búsqueda y reinicia la página para que el primer resultado quede visible.
   function find(event: FormEvent) {
     event.preventDefault();
     setSearch(query.trim());
@@ -46,12 +49,14 @@ export function BusinessPicker({ industries, last, select, create, accountId }: 
     setRefresh((value) => value + 1);
   }
 
+  // Marca la siguiente página solicitada. La lista se obtiene del servidor con la búsqueda actual.
   function goToPage(next: number) {
     setData(null);
     setError("");
     setPage(next);
   }
 
+  // Espera que la selección sea aceptada antes de cambiar de espacio. El identificador de una tarjeta por sí solo no acredita acceso.
   async function open(item: Pick<BusinessCard, "id">) {
     setOpeningId(item.id);
     setError("");

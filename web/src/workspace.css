@@ -1,3 +1,5 @@
+/* Controla la navegación y la distribución del área de trabajo según el ancho de pantalla. */
+
 .workspace {
   --workspace-nav-space: 0px;
   display: grid;
@@ -44,6 +46,7 @@
 .workspace-nav a svg { flex: none; }
 .workspace-nav a[aria-current="page"], .workspace-nav a:hover { background: var(--accent-soft); color: var(--accent); }
 .workspace-nav a[aria-current="page"] { box-shadow: inset .18rem 0 var(--accent); }
+/* Permite que el contenido se reduzca dentro de su columna y reserva el espacio que necesita la navegación. */
 .workspace-content { min-width: 0; padding-bottom: var(--workspace-nav-space); }
 
 .card-title { display: flex; align-items: center; gap: .7rem; }
@@ -89,6 +92,7 @@
 .pagination { justify-content: flex-end; }
 .business-wizard .inline-actions { justify-content: space-between; }
 
+/* Reduce la navegación en tablet para dejar ancho a la pantalla abierta. */
 @media (min-width: 641px) and (max-width: 1099px) {
   .workspace { grid-template-columns: 5.2rem minmax(0, 1fr); }
   .workspace-nav { padding: .45rem; }
@@ -96,6 +100,7 @@
   .workspace-nav-business div { display: none; }
   .workspace-nav a { flex-direction: column; justify-content: center; padding: .4rem .2rem; gap: .25rem; font-size: .7rem; text-align: center; }
 }
+/* En móvil la navegación fija queda abajo. Su altura reservada permite alcanzar los últimos controles al desplazar. */
 @media (max-width: 640px) {
   .workspace { --workspace-nav-space: calc(4.75rem + env(safe-area-inset-bottom, 0px)); display: block; }
   :root { scroll-padding-bottom: calc(5.5rem + var(--review-space, 0px) + env(safe-area-inset-bottom, 0px)); }

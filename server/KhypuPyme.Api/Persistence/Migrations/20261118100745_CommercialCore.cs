@@ -3,12 +3,14 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+// Crea el esquema comercial básico. Productos, Caja, operaciones y sus líneas quedan vinculados al negocio que los registra.
 namespace KhypuPyme.Api.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class CommercialCore : Migration
     {
         /// <inheritdoc />
+        // Combina claves, restricciones y políticas por fila para que cada registro se mantenga en su contexto comercial.
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
@@ -368,6 +370,7 @@ namespace KhypuPyme.Api.Persistence.Migrations
         }
 
         /// <inheritdoc />
+        // Retira las tablas del núcleo comercial atendiendo primero las que dependen de otras mediante claves foráneas.
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(

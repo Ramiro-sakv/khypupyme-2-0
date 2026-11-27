@@ -6,6 +6,7 @@ using KhypuPyme.Api.Timber;
 using KhypuPyme.Api.Security;
 using Microsoft.EntityFrameworkCore;
 
+// Reúne los registros del negocio autorizado en una respuesta JSON versionada. Cada colección se limita al identificador del negocio que se está exportando.
 namespace KhypuPyme.Api.Commerce;
 
 internal static class CommerceExport
@@ -20,6 +21,7 @@ internal static class CommerceExport
                                      settings.QuoteDays, settings.AllowNewCredit, settings.LotAlertDays)))
             .SingleAsync(ct);
 
+        // La fecha y versión ayudan a interpretar el archivo más adelante. Las operaciones incluyen sus líneas para que se pueda reconstruir qué se registró.
         var data = new
         {
             version = 1,
@@ -46,6 +48,7 @@ internal static class CommerceExport
         };
         return Results.Json(data);
 
+        // Las filas se leen sin seguimiento porque la exportación solo necesita una copia para enviar al usuario.
         Task<T[]> Rows<T>() where T : class, IBusinessRecord =>
             db.Set<T>().AsNoTracking().Where(x => x.BusinessId == businessId).ToArrayAsync(ct);
     }

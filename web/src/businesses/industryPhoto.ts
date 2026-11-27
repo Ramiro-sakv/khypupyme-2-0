@@ -1,3 +1,5 @@
+// Relaciona rubros con imágenes locales. La interfaz pide la foto por rubro y mantiene los archivos en assets.
+
 import timber from "../assets/rubros/maderas-v1.webp";
 import retail from "../assets/rubros/mostrador-v1.webp";
 import fashion from "../assets/rubros/moda-v1.webp";

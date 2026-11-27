@@ -2,10 +2,12 @@ using KhypuPyme.Api.Commerce;
 using KhypuPyme.Api.Persistence;
 using Microsoft.EntityFrameworkCore;
 
+// Estas consultas preparan las citas y órdenes para las pantallas de agenda, cobro y seguimiento.
 namespace KhypuPyme.Api.Services;
 
 internal static class WorkQueries
 {
+    // Usa AsNoTracking porque estas consultas muestran datos. La API evita mantener una copia para escritura.
     private static IQueryable<WorkItem> Items(KhypuPymeDbContext db) => db.Set<WorkItem>().AsNoTracking();
 
     private static IQueryable<WorkItem> Active(IQueryable<WorkItem> rows) =>
@@ -14,6 +16,7 @@ internal static class WorkQueries
     private static IQueryable<WorkItem> Billable(IQueryable<WorkItem> rows) =>
         rows.Where(x => x.SaleId == null && (x.State == "ready" || x.State == "attended" || x.State == "delivered"));
 
+    // Filtra antes de paginar para que la búsqueda se aplique a todo el negocio y no solo a la página visible.
     public static async Task<CommercePage<WorkInfo>> ListAsync(KhypuPymeDbContext db, DateOnly? day, string? filter, string? search,
         DateOnly today, int? page, CancellationToken ct)
     {
@@ -46,9 +49,11 @@ internal static class WorkQueries
         return record is null ? null : ProjectInfo(record);
     }
 
+    // Recupera el trabajo vinculado a la venta para mostrar de qué cita u orden provino el cobro.
     public static Task<WorkCharge?> ChargeAsync(KhypuPymeDbContext db, Guid sale, CancellationToken ct) =>
         Items(db).Where(x => x.SaleId == sale).Select(x => new WorkCharge(x.Id, x.Title)).SingleOrDefaultAsync(ct);
 
+    // Calcula los pendientes para Inicio, como trabajos cercanos a su fecha o que ya pueden cobrarse.
     public static async Task<WorkAttention> AttentionAsync(KhypuPymeDbContext db, DateOnly today, CancellationToken ct)
     {
         var rows = Items(db);

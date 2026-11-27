@@ -3,12 +3,14 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+// Crea el registro de pruebas por cuenta y los intentos de pago de demostración.
 namespace KhypuPyme.Api.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class DemoBusinessPlans : Migration
     {
         /// <inheritdoc />
+        // Separa las licencias y los intentos simulados de los registros de Caja del comerciante.
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
@@ -120,6 +122,7 @@ namespace KhypuPyme.Api.Persistence.Migrations
         }
 
         /// <inheritdoc />
+        // Quita las estructuras de prueba y de pago de demostración de esta versión.
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(

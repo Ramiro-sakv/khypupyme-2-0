@@ -1,3 +1,5 @@
+// Componentes de interfaz compartidos por los formularios. Tenerlos aquí mantiene consistentes etiquetas, estados y controles.
+
 import { useId } from "react";
 import type { ButtonHTMLAttributes, ComponentPropsWithRef, ReactNode, SelectHTMLAttributes } from "react";
 import { Icon } from "./Icon";
@@ -5,6 +7,7 @@ import type { IconName } from "./Icon";
 
 type FieldDetails = { label: string; hint?: string; error?: string };
 
+// Cada campo reúne la etiqueta, el elemento de captura y los textos de ayuda o error que le corresponden.
 function FieldFrame({ id, label, hint, error, children }: FieldDetails & { id: string; children: ReactNode }) {
   return <div className="ui-field">
     <label htmlFor={id}>{label}</label>
@@ -14,6 +17,7 @@ function FieldFrame({ id, label, hint, error, children }: FieldDetails & { id: s
   </div>;
 }
 
+// Reúne los identificadores de ayuda y error. aria-describedby permite que un lector de pantalla anuncie el contexto junto al campo.
 function described(id: string, hint?: string, error?: string) {
   return [hint && id + "-hint", error && id + "-error"].filter(Boolean).join(" ") || undefined;
 }
@@ -34,6 +38,7 @@ export function SelectField({ id, label, hint, error, ...props }: SelectHTMLAttr
   </FieldFrame>;
 }
 
+// Usa type button por defecto para que un control auxiliar dentro de un formulario no lo envíe por accidente.
 export function Button({ children, variant = "primary", icon, className, type = "button", ...props }:
   ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "plain"; icon?: IconName }) {
   return <button {...props} type={type} className={["ui-button", "ui-button--" + variant, className].filter(Boolean).join(" ")}>
@@ -57,6 +62,7 @@ export function EmptyState({ icon, title, children }: { icon: IconName; title: s
   </div>;
 }
 
+// Mantiene el título y los encabezados de columna en la estructura de tabla, para poder relacionar cada valor con su columna.
 export function DataTable({ caption, columns, rows }: {
   caption: string;
   columns: readonly string[];

@@ -1,7 +1,10 @@
+// Relaciona cada rubro con sus rutas de trabajo y atajos. El espacio de trabajo conserva los componentes de operación que esas rutas abren.
+
 import type { BusinessView } from "./BusinessWorkspace";
 import type { IndustryId } from "./industryThemes";
 import type { IconName } from "../ui/Icon";
 
+// La tupla junta lo que necesita un acceso directo, como la vista, el texto, el icono y un posible objetivo de foco.
 export type IndustryAction = readonly [view: BusinessView, label: string, detail: string, icon: IconName, focus?: string];
 type Operations = { title: string; actions: readonly IndustryAction[] };
 type CoreIndustry = "timber" | "convenience" | "clothing" | "appliances";

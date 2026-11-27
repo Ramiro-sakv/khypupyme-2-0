@@ -5,6 +5,7 @@ using KhypuPyme.Api.Billing;
 using KhypuPyme.Api.Persistence;
 using Microsoft.EntityFrameworkCore;
 
+// La pantalla Mis negocios usa estas rutas para listar, crear y recordar el último negocio de la cuenta.
 namespace KhypuPyme.Api.Businesses;
 
 internal static class BusinessEndpoints
@@ -22,6 +23,7 @@ internal static class BusinessEndpoints
         writes.MapPut("/{id:guid}/settings", UpdateSettingsAsync);
     }
 
+    // Aplica la búsqueda y la paginación al listado que puede ver la cuenta. La interfaz recibe solo la página solicitada.
     private static async Task<IResult> GetPageAsync(string? search, int? page, HttpContext http,
         BusinessAccess access, KhypuPymeDbContext db, CancellationToken ct)
     {
@@ -45,6 +47,7 @@ internal static class BusinessEndpoints
         return Results.Ok(new BusinessPage(items.Take(pageSize).ToArray(), items.Length > pageSize));
     }
 
+    // Recupera el último negocio elegido por esta cuenta. Esa preferencia permite volver al lugar de trabajo.
     private static async Task<IResult> GetLastAsync(HttpContext http, BusinessAccess access, KhypuPymeDbContext db, CancellationToken ct)
     {
         http.Response.Headers.CacheControl = "no-store";
@@ -58,6 +61,7 @@ internal static class BusinessEndpoints
         return Results.Ok(new SelectedBusiness(business));
     }
 
+    // Devuelve el perfil y sus ajustes para que la pantalla se adapte al rubro seleccionado.
     private static async Task<IResult> GetProfileAsync(Guid id, HttpContext http, BusinessAccess access,
         KhypuPymeDbContext db, CancellationToken ct)
     {
@@ -69,6 +73,7 @@ internal static class BusinessEndpoints
         return Results.Ok(Profile(business, settings));
     }
 
+    // Usa el ID de la solicitud y la huella de su contenido para recuperar un alta repetida. Así reintentar no crea otro negocio.
     private static async Task<IResult> CreateAsync(NewBusiness input, HttpContext http, BusinessAccess access,
         KhypuPymeDbContext db, CancellationToken ct)
     {
@@ -118,6 +123,7 @@ internal static class BusinessEndpoints
         return Results.Ok(Profile(business, settings));
     }
 
+    // Recuerda el negocio elegido después de comprobar que pertenece a la sesión.
     private static async Task<IResult> SelectAsync(Guid id, HttpContext http, BusinessAccess access,
         KhypuPymeDbContext db, CancellationToken ct)
     {
@@ -132,6 +138,7 @@ internal static class BusinessEndpoints
         return Results.NoContent();
     }
 
+    // Actualiza los campos de presentación del negocio. Las reglas comerciales se guardan mediante BusinessPolicy.
     private static async Task<IResult> UpdateSettingsAsync(Guid id, SettingsInput input, HttpContext http,
         BusinessAccess access, KhypuPymeDbContext db, CancellationToken ct)
     {

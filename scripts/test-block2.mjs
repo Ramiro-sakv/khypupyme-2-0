@@ -49,6 +49,7 @@ class Client {
     return {
       body: response.headers.get("content-type")?.includes("json") ? await response.json() : null,
       location: response.headers.get("location"),
+      headers: response.headers,
     };
   }
 
@@ -98,7 +99,16 @@ try {
     catch (error) { if (attempt >= 25) throw error; await delay(200); }
   }
 
-  await anon.request(businesses, 401);
+  const denied = await anon.request(businesses, 401);
+  const csrf = await anon.request(auth + "/csrf", 200);
+  for (const { headers } of [denied, csrf]) {
+    assert.equal(headers.get("x-content-type-options"), "nosniff");
+    assert.equal(headers.get("referrer-policy"), "no-referrer");
+    assert.equal(headers.get("content-security-policy"), "frame-ancestors 'none'");
+    assert.equal(headers.get("x-frame-options"), "DENY");
+    assert.equal(headers.get("strict-transport-security"), null);
+  }
+  console.log("Cabeceras comprobadas en respuestas 200 y 401. HSTS solo en el perfil de piloto.");
   await anon.request(auth + "/google/start", 503);
   await a.request(auth + "/register/code", 400, { method: "POST", noCsrf: true, body: { email: aEmail } });
   await register(a, aEmail);

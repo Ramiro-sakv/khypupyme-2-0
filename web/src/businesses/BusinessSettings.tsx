@@ -1,3 +1,5 @@
+// Agrupa la ficha, preferencias, cuenta y opciones del negocio activo. Cada bloque llama a la acción que le corresponde.
+
 import { useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { change } from "../api/client";
@@ -25,6 +27,7 @@ export function BusinessSettings({ profile, industry, openPlan, onRemoved, accou
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Envía los cambios de la ficha al servidor y espera su resultado antes de considerar guardados los datos.
   async function save(event: FormEvent) {
     event.preventDefault();
     setBusy(true);

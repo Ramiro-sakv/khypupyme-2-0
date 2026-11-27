@@ -1,3 +1,5 @@
+// Administra IndexedDB para los borradores y las solicitudes en curso. Cada clase de registro tiene sus claves y reglas de actualización.
+
 import type { Command } from "./models";
 
 export type DraftStamp = { key: string; revision: string };
@@ -6,6 +8,7 @@ export type PendingRecord = { scope: string; command: Command; draft?: DraftStam
 type Store = "drafts" | "pending";
 
 let opened: Promise<IDBDatabase> | undefined;
+// Abre el almacenamiento del navegador. En una primera visita se crean los almacenes que usan los formularios.
 function database() {
   opened ??= new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open("khypupyme2-commerce", 1);
@@ -19,6 +22,7 @@ function database() {
   return opened;
 }
 
+// Ejecuta la lectura y el cambio bajo la misma transacción local. Revisar la revisión y guardar por separado permitiría que dos pestañas se pisaran.
 async function edit<T, R>(name: Store, key: string, mode: IDBTransactionMode,
   apply: (store: IDBObjectStore, value: T | undefined, transaction: IDBTransaction) => R,
   writableScope?: string): Promise<R> {
@@ -55,6 +59,7 @@ export function readDraft<T>(key: string) {
   return edit<DraftRecord<T>, DraftRecord<T> | undefined>("drafts", key, "readonly", (_, value) => value);
 }
 
+// Compara la versión esperada con la guardada antes de reemplazar el borrador.
 export function saveDraft<T>(key: string, value: T, expected: string | undefined) {
   return edit<DraftRecord<T>, DraftStamp>("drafts", key, "readwrite", (store, current) => {
     if (current?.revision !== expected) throw new Error("El borrador guardado cambió en otra ventana. Carga su versión antes de continuar.");
@@ -89,6 +94,7 @@ export function clearPracticeScope(scope: string) {
   });
 }
 
+// Marca el contexto que se está preparando para borrar. Así otro flujo local puede saber que hay una baja en curso.
 export function freezeRemoval(scope: string) {
   return edit<PendingRecord, void>("pending", scope, "readwrite", (store, pending) => {
     if (pending) throw new Error("Consulta la operación pendiente de este navegador antes de borrar.");
@@ -104,6 +110,7 @@ export function removalIsFrozen(scope: string) {
   return edit<boolean, boolean>("pending", "closing:" + scope, "readonly", (_, value) => !!value);
 }
 
+// Restringe los envíos sin resolver del mismo contexto. Una segunda pestaña obtiene el registro existente en lugar de tomar su lugar.
 export function reserveRequest(record: PendingRecord) {
   return edit<PendingRecord, PendingRecord>("pending", record.scope, "readwrite", (store, current) => {
     if (current) return current;
@@ -112,6 +119,7 @@ export function reserveRequest(record: PendingRecord) {
   }, record.scope);
 }
 
+// Al confirmar se puede retirar el borrador asociado. La revisión protege un borrador posterior aunque pertenezca a la misma pantalla.
 export function clearRequest(record: PendingRecord, confirmed: boolean) {
   return edit<PendingRecord, void>("pending", record.scope, "readwrite", (store, current, tx) => {
     if (current?.command.operationId !== record.command.operationId) return;

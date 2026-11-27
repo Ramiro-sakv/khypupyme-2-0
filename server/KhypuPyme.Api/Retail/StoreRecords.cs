@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using KhypuPyme.Api.Commerce;
 
+// Estas estructuras representan lotes, equipos y detalles especializados de las líneas. Guardan datos que permiten reconstruir la venta después.
 namespace KhypuPyme.Api.Retail;
 
 public sealed record RetailProfile(string Unit, int BoxSize, bool TrackLots, decimal Reorder, decimal? RollLength = null);
@@ -16,6 +17,7 @@ public sealed record LineDetails(RetailInput? Measure = null, decimal? BaseQuant
     string? Direction = null, string? RateUnit = null, ProductSpecialty? Specialty = null, PrintingDetail? Printing = null, TileCoverage? Tile = null,
     bool IsService = false, long? TimberCatalogMinor = null, string? TimberCostUnit = null)
 {
+    // Recupera los datos del comprobante guardados en JSON, entre ellos los lotes consumidos o la serie vendida.
     internal static LineDetails? Parse(string? json) => json is null ? null : JsonSerializer.Deserialize<LineDetails>(json);
     internal static string? Save(LineDetails? value) => value is null ? null : JsonSerializer.Serialize(value);
 }
@@ -27,6 +29,7 @@ public sealed record SerialMovement(string Kind, Guid EntryId, string Number, Da
 public sealed record UnitHistory(SerialInfo Unit, SerialMovement[] Movements);
 public sealed record StoreAttention(int Reorder, int Expiring, int Inspections, int Expired, int Held);
 
+// Conserva cantidad, costo y condiciones de venta del lote de una ficha.
 internal sealed class RetailLot : IBusinessRecord
 {
     public Guid BusinessId { get; init; }
@@ -38,6 +41,7 @@ internal sealed class RetailLot : IBusinessRecord
     public bool Held { get; set; }
 }
 
+// Conserva el estado de una unidad física y su relación con los documentos comerciales.
 internal sealed class EquipmentUnit : IBusinessRecord
 {
     public Guid BusinessId { get; init; }
@@ -50,6 +54,7 @@ internal sealed class EquipmentUnit : IBusinessRecord
     public DateOnly? WarrantyUntil { get; set; }
 }
 
+// Guarda los cambios de una unidad para consultar su historia por serie.
 internal sealed class EquipmentMovement : IBusinessRecord
 {
     public Guid BusinessId { get; init; }

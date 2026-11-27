@@ -1,3 +1,5 @@
+// Define iconos, colores y grupos visibles de los rubros. Mantiene la identidad visual en un solo archivo.
+
 import type { CSSProperties } from "react";
 import type { IconName } from "../ui/Icon";
 
@@ -28,6 +30,7 @@ const identities = {
 export type IndustryId = keyof typeof identities;
 export const usesDeliveries = (industry: string) => ["furniture", "cement", "ceramics", "hardware", "beverages", "timber"].includes(industry);
 
+// Los grupos permiten presentar los rubros por actividad durante la creación del negocio.
 export const industryFamilies: { label: string; ids: IndustryId[] }[] = [
   { label: "Alimentos y consumo", ids: ["convenience", "grocery", "beverages"] },
   { label: "Moda y hogar", ids: ["clothing", "footwear", "furniture", "cosmetics"] },
@@ -37,6 +40,7 @@ export const industryFamilies: { label: string; ids: IndustryId[] }[] = [
   { label: "Servicios y oficios", ids: ["beauty", "cleaning", "professional", "repair"] },
 ];
 
+// Devuelve el icono y las variables de CSS del perfil. Los componentes pueden compartir su diseño y recibir distintos colores.
 export function industryTheme(industry: string): { style: CSSProperties; icon: IconName } {
   const [accent, surface, icon] = identities[industry as keyof typeof identities] ?? ["#12483d", "#e9f0eb", "shops"];
   return { style: { "--accent": accent, "--accent-soft": surface } as CSSProperties, icon };

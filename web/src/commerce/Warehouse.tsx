@@ -1,3 +1,5 @@
+// Muestra el inventario que devuelve la API y permite consultar fichas, existencias y movimientos.
+
 import { useState } from "react";
 import type { components } from "../api/schema";
 import { Alert, Button, Card, DataTable, SelectField } from "../ui/Primitives";
@@ -71,6 +73,7 @@ export function Warehouse({ industry, focus, open, openBags }: {
   </Card>;
 }
 
+// Busca las operaciones confirmadas que movieron este producto. El número del comprobante permite seguir el origen de cada cambio.
 export function StockMovements({ product, units }: { product: Product; units: TimberUnits }) {
   const [page, setPage] = useState(1);
   const { showDocument } = useCommerce();
@@ -101,6 +104,7 @@ export function StockMovements({ product, units }: { product: Product; units: Ti
   </Card>;
 }
 
+// Consulta unidades por serie para distinguir el saldo del modelo y el estado de cada equipo físico.
 export function WarehouseSerials({ product }: { product: Product }) {
   const [page, setPage] = useState(1);
   const [serial, setSerial] = useState("");

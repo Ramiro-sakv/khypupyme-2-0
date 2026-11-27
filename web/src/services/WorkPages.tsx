@@ -1,3 +1,5 @@
+// Lista y abre citas y órdenes. Desde el detalle se puede seguir su estado, abrir la constancia o iniciar el cobro.
+
 import { useState } from "react";
 import { useCommerce, useCommerceData } from "../commerce/CommerceContext";
 import { CommerceHeading, LoadFeedback, NoRecords, OperationForm, Pages, SearchForm, useCommercialForm } from "../commerce/CommerceUi";
@@ -70,6 +72,7 @@ export function WorkDetail({ id, back, charge, openInventory }: {
   </div>;
 }
 
+// Organiza las acciones visibles a partir del trabajo devuelto por el servidor. Puede abrir la venta vinculada cuando el trabajo ya fue cobrado.
 function WorkDetailBody({ item, charge, openInventory }: { item: Work; charge: (id: string) => void; openInventory: () => void }) {
   const { showDocument } = useCommerce();
   const form = useCommercialForm();
@@ -142,6 +145,7 @@ function WorkDetailBody({ item, charge, openInventory }: { item: Work; charge: (
   </>;
 }
 
+// Traduce el estado actual en la acción que sigue, como aprobar, reparar o entregar. Las reglas que confirman el cambio siguen en la API.
 function nextStep(item: Work): { state: string; label: string; blocked?: boolean; hint?: string } | undefined {
   switch (item.state) {
     case "scheduled":

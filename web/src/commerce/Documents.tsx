@@ -1,3 +1,5 @@
+// Muestra el historial y los comprobantes registrados. Un documento puede abrir acciones vinculadas, como convertir una cotización o devolver una venta.
+
 import { lazy, useState } from "react";
 import { Alert, Button, Card, DataTable, SelectField, TextField } from "../ui/Primitives";
 import { useCommerce, useCommerceData } from "./CommerceContext";
@@ -52,6 +54,7 @@ export function HistoryPage({ initialKind, allowExport, documents = false, fixed
   </div>;
 }
 
+// Consulta el historial por los filtros del flujo que lo abrió, por ejemplo por sesión de Caja o por tipo de documento.
 export function EntryList({ kind, cashSession, caption, filters }: {
   kind?: string; cashSession?: string; caption: string; filters?: EntryFilters;
 }) {
@@ -78,6 +81,7 @@ export function EntryList({ kind, cashSession, caption, filters }: {
   </Card>;
 }
 
+// Usa el identificador del historial para solicitar el detalle confirmado con sus líneas e importes guardados.
 export function DocumentPage({ id, back, convert, openSerial, deliveries, openWork }: {
   id: string; back: () => void; convert: (quote: EntryDocument) => void; openSerial?: (serial: string) => void; deliveries?: boolean;
   openWork?: (id: string) => void;
@@ -89,6 +93,7 @@ export function DocumentPage({ id, back, convert, openSerial, deliveries, openWo
   const [error, setError] = useState("");
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [action, setAction] = useState<"return" | "void" | "exchange" | null>(null);
+  // Genera el PDF a partir del detalle existente. Así descargar otra copia reutiliza la operación ya registrada.
   async function savePdf() {
     if (!document) return;
     setError("");
@@ -166,6 +171,7 @@ function documentTitle(kind: string) {
   return name + (["exchange", "containers", "expense", "collect", "close-cash"].includes(kind) ? " confirmado" : " confirmada");
 }
 
+// Vincula la devolución con líneas de la venta original, para que el servidor pueda verificar lo que queda por devolver.
 function ReturnEditor({ document, close }: { document: EntryDocument; close: () => void }) {
   const [chosen, setChosen] = useState<Record<string, { quantity: string; restock: boolean }>>({});
   const [note, setNote] = useState("");

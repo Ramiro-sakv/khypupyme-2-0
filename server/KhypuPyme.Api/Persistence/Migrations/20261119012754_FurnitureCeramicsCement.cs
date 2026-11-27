@@ -3,12 +3,14 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+// Incorpora entregas de muebles, especificaciones de materiales y la relación entre una ficha de bolsa y su presentación a granel.
 namespace KhypuPyme.Api.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class FurnitureCeramicsCement : Migration
     {
         /// <inheritdoc />
+        // Enlaza la entrega con una venta del mismo negocio para que el despacho pueda seguir la operación que ya registró el stock.
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<Guid>(
@@ -88,6 +90,7 @@ namespace KhypuPyme.Api.Persistence.Migrations
         }
 
         /// <inheritdoc />
+        // Quita el seguimiento de entregas, los campos de materiales y la relación de cemento a granel añadidos aquí.
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(

@@ -1,3 +1,5 @@
+// Convierte datos ya registrados en documentos PDF para guardar o compartir. Carga la biblioteca y sus fuentes cuando el usuario solicita un archivo.
+
 import type { Content, TableCell, TDocumentDefinitions } from "pdfmake/interfaces";
 import type { EntryDocument, Report } from "./models";
 import { bob, dateLabel, documentAmount, documentName, isOperationalReceipt, methodLabel, reportResult } from "./models";
@@ -5,6 +7,7 @@ import { documentTimber, documentUnit } from "../timber/measures";
 import { describeLine, lineQuantity, lineRate } from "../retail/measures";
 import { downloadFile, isNative } from "../native/platform";
 
+// Arma el comprobante con las líneas, medidas y totales que devolvió la API. El precio impreso sigue el registro de la operación.
 function buildDocument(record: EntryDocument): TDocumentDefinitions {
   const heading = documentName(record.kind);
   const transfer = record.kind === "open-cement";
@@ -68,6 +71,7 @@ export async function downloadDocument(record: EntryDocument) {
   await savePdf(buildDocument(record), file);
 }
 
+// Usa el mismo informe que se muestra en pantalla. Cuando el contexto es de práctica, la salida también queda identificada como tal.
 export async function downloadReport(report: Report, business: string, practice: boolean) {
   const columns = ["Fecha", "Ventas", "Compras", "Costo vendido", "Gastos", "Pérdidas", "Resultado"];
   const rows = report.days.map((day) => [dateLabel(day.date), ...[day.salesMinor, day.purchasesMinor, day.costMinor,
@@ -89,6 +93,7 @@ export async function downloadReport(report: Report, business: string, practice:
   }, "informe-" + report.from + "-" + report.to + ".pdf");
 }
 
+// Carga el generador aquí para que usar la aplicación no requiera descargar las fuentes de PDF desde el arranque.
 async function savePdf(definition: TDocumentDefinitions, file: string) {
   const [{ default: pdfMake }, { default: fonts }] = await Promise.all([
     import("pdfmake/build/pdfmake"), import("pdfmake/build/vfs_fonts"),

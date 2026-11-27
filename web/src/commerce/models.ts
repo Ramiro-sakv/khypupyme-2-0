@@ -1,3 +1,5 @@
+// Tipos comerciales y funciones compartidas de formato. La API trabaja con centavos y la interfaz presenta los importes en bolivianos.
+
 import type { components } from "../api/schema";
 import { businessApi } from "../businesses/models";
 
@@ -13,15 +15,18 @@ export type EntryInfo = Schema["EntryInfo"];
 export type EntryDocument = Schema["EntryDocument"];
 export type Receivable = Schema["ReceivableInfo"];
 export type Report = Schema["CommerceReport"];
+// Calcula el resultado con las cifras operativas. Las compras se muestran como valor de mercadería adquirida y se registran separadas del costo de lo vendido.
 export const reportResult = (day: Report["totals"]) =>
   day.resultMinor ?? day.salesMinor - day.costMinor - day.expensesMinor - day.lossesMinor;
 export type Page<T> = { items: T[]; hasMore: boolean };
 
+// El negocio de práctica usa otra ruta. Elegirla aquí permite reutilizar las pantallas del negocio habitual con su espacio de ejercicio.
 export const commercePath = (id: string, practice?: boolean) => businessApi + "/" + id + (practice ? "/practice-commerce" : "/commerce");
 export const moneyLimit = 1_000_000_000_000;
 const currency = new Intl.NumberFormat("es-BO", { style: "currency", currency: "BOB" });
 export const bob = (minor: number) => currency.format(minor / 100);
 export const editableMoney = (minor: number) => (minor / 100).toFixed(2);
+// Convierte la captura a centavos. Por ejemplo, Bs 15.000,00 se muestra con formato local, pero el valor que viaja después de capturar el importe son 1500000 centavos.
 export function parseMoney(text: string): number | null {
   const match = /^(\d{1,11})(?:[.,](\d{1,2}))?$/.exec(text.trim());
   if (!match) return null;
@@ -60,6 +65,7 @@ export function documentAmount(document: EntryDocument) {
 export const dateLabel = (day: string) => new Intl.DateTimeFormat("es-BO", {
   day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
 }).format(new Date(day + "T00:00:00Z"));
+// Usa el huso de Bolivia al mostrar el instante, para que el usuario lea la fecha que corresponde a su jornada de trabajo.
 export const timestamp = (instant: string) => new Intl.DateTimeFormat("es-BO", {
   dateStyle: "medium", timeStyle: "short", timeZone: "America/La_Paz",
 }).format(new Date(instant));

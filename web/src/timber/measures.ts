@@ -1,3 +1,5 @@
+// Interpreta las medidas de madera y calcula su volumen. La entrada puede estar en métrica o en pies y pulgadas, pero la clave de stock usa una medida común.
+
 import type { components } from "../api/schema";
 
 type Schema = components["schemas"];
@@ -24,6 +26,7 @@ export const measureKey = (d: Dimensions) => [d.lengthMicros, d.thicknessMicros,
 export const lengthUnit = (units: TimberUnits) => units === "metric" ? "mm" : "pies";
 export const faceUnit = (units: TimberUnits) => units === "metric" ? "mm" : "pulgadas";
 
+// Interpreta decimales y fracciones como dos enteros. Así 1 1/2 se puede convertir sin introducir error de coma flotante.
 function fraction(raw: string): [bigint, bigint] {
   const value = raw.trim();
   const decimal = /^(\d{1,5})(?:[.,](\d{1,6}))?$/.exec(value) ?? /^()(?:[.,](\d{1,6}))$/.exec(value);
@@ -37,6 +40,7 @@ function fraction(raw: string): [bigint, bigint] {
   return [BigInt(mixed[1] ?? 0) * denominator + BigInt(mixed[2]), denominator];
 }
 
+// Convierte la captura a millonésimas de milímetro. El ancho comercial imperial toma pulgadas enteras hacia abajo. El espesor conserva sus fracciones.
 export function dimension(raw: string, units: TimberUnits, axis: "length" | "face" | "width") {
   const [numerator, denominator] = fraction(raw);
   const commercial = units === "imperial" && axis === "width";
@@ -57,10 +61,12 @@ function pieces(value: string) {
   return Number(value);
 }
 
+// Convierte la lista escrita en cantidades por medida. Por ejemplo, 5x10 significa cinco piezas de ancho 10 y se puede sumar a otro grupo del mismo ancho.
 export function captureTimber(capture: Capture) {
   const rows: { timber: Dimensions; quantity: number }[] = [];
   const notices = new Set<string>();
   try {
+    // Una medida elegida de Almacén ya está registrada en unidades internas. Se conserva la clave exacta y solo se interpreta la cantidad pedida.
     if (capture.selection) {
       rows.push({ timber: capture.selection.timber, quantity: pieces(capture.selection.quantity) });
     } else {
@@ -89,21 +95,25 @@ export function captureTimber(capture: Capture) {
   }
 }
 
+// La tarifa se decide por largo. Es independiente del espesor, que sí cambia el volumen.
 export function timberRate(rates: Rates, dimensions: Dimensions) {
   const feet = dimensions.lengthMicros / Number(foot);
   return feet <= 2 ? rates.superShortMinor : feet <= 6 ? rates.shortMinor : rates.longMinor;
 }
 
+// Multiplica las tres medidas y las piezas usando BigInt. Los enteros grandes mantienen exacto el volumen que se usará para calcular importes.
 export function exactVolume(d: Dimensions, quantity: number) {
   return BigInt(d.lengthMicros) * BigInt(d.thicknessMicros) * BigInt(d.widthMicros) * BigInt(quantity);
 }
 
 const round = (numerator: bigint, denominator: bigint) => (2n * numerator + denominator) / (2n * denominator);
 
+// Aplica la tarifa a la proporción exacta de pie tablar. Se redondea a centavos después de multiplicar.
 export function timberAmount(volume: bigint, minor: number) {
   return Number(round(volume * BigInt(minor), boardFoot));
 }
 
+// Redondea la cantidad solo para mostrarla. El importe se calcula desde el volumen exacto.
 export function timberVolume(rows: { timber: Dimensions; quantity: number }[], units: TimberUnits) {
   const total = rows.reduce((sum, row) => sum + exactVolume(row.timber, row.quantity), 0n);
   return quantityFormat.format(Number(round(total * 100n, units === "metric" ? cubicMetre : boardFoot)) / 100);
@@ -120,6 +130,7 @@ export function timberLabel(d: Dimensions, units: TimberUnits) {
     displayMeasure(d.lengthMicros, units, "length") + (units === "metric" ? " mm" : "′");
 }
 
+// Presenta las medidas de la línea guardada con el sistema que corresponde al comprobante.
 export function documentTimber(record: Schema["EntryDocument"], line: Schema["DocumentLine"]) {
   if (!line.timber) return "";
   const units = unitsOf(record.timberUnits);

@@ -1,3 +1,5 @@
+/* Estilos de componentes reutilizables. Contiene botones, campos, alertas, tablas y el panel flotante Revisar. */
+
 :root {
   --accent: #12483d;
   --accent-soft: #e9f0eb;
@@ -43,6 +45,7 @@
   color: inherit;
   font: inherit;
 }
+/* El borde de error acompaña el estado accesible que marca el componente. Ambos representan la misma validación del campo. */
 .ui-field :is(input, select)[aria-invalid="true"] { border-color: #a14336; }
 .ui-field small { color: var(--muted); }
 .ui-field .ui-field-error { color: #842e24; }
@@ -56,6 +59,7 @@
 .ui-empty p { max-width: 30ch; margin-top: 0; }
 .ui-icon-surface { display: inline-grid; flex: none; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: .7rem; background: var(--accent-soft); color: var(--accent); }
 
+/* Permite desplazar tablas anchas dentro de su tarjeta para que los importes tengan espacio sin desbordar toda la página. */
 .ui-table-scroll { min-inline-size: 0; max-inline-size: 100%; overflow-x: auto; }
 .ui-table { width: 100%; border-collapse: collapse; text-align: start; font-variant-numeric: tabular-nums;
   font-size: clamp(.8125rem, .77rem + .19vw, .9375rem); overflow-wrap: break-word; }
@@ -71,6 +75,7 @@
 
 :root { scroll-padding-bottom: calc(var(--review-space, 0px) + .9rem); }
 .review-slot:not([hidden]) { min-block-size: calc(var(--review-space, 0px) + .65rem); }
+/* Coloca la revisión cerca del borde visible. ReviewDock mide el ancho del espacio de trabajo y lo pasa mediante variables de CSS. */
 .review-rail {
   position: fixed;
   z-index: 4;
@@ -111,6 +116,7 @@
 .review-actions .review-toggle[aria-expanded="true"] { width: 44px; padding-inline: 0; }
 .review-dock strong { font-size: 1.22rem; font-variant-numeric: tabular-nums; }
 .review-total-label { display: block; color: var(--muted); font-size: .85rem; }
+/* Limita el diálogo al espacio visible. La cabecera y el cuerpo se gestionan por separado para que el contenido pueda desplazarse. */
 .review-dialog {
   position: fixed;
   inset: auto 0 calc(var(--workspace-nav-space, 0px) + .55rem);

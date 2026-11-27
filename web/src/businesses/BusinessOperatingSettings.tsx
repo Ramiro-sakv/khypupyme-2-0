@@ -1,3 +1,5 @@
+// Edita reglas del negocio como el medio de pago sugerido o los avisos de lotes. Sus valores afectan las condiciones que se ofrecen en formularios.
+
 import { useState } from "react";
 import { useCommerce } from "../commerce/CommerceContext";
 import { useCommercialForm } from "../commerce/CommerceUi";
@@ -73,6 +75,7 @@ const coreShortcuts: Partial<Record<IndustryId, readonly IndustryShortcut[]>> = 
   appliances: [["series", "Series, garantía e inspección"], ["compras", "Recibir equipos"]],
 };
 
+// Agrupa accesos a controles especializados según el rubro del negocio.
 export function IndustrySettings({ industry, navigate }: {
   industry: string; navigate: (view: BusinessView, focus?: string) => void;
 }) {

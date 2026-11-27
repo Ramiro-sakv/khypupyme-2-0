@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Registra aperturas, cierres, gastos, ajustes y fiados. Cada operación utiliza la transacción que abrió el servicio comercial.
 namespace KhypuPyme.Api.Commerce;
 
 internal sealed class CashOperations(CommerceTransaction work)
 {
+    // Selecciona la regla según la acción solicitada. Cada método devuelve el identificador que quedará en el registro del comando.
     public Task<Guid> ExecuteAsync() => work.Command.Kind switch
     {
         "open-cash" => OpenAsync(),
@@ -18,6 +20,7 @@ internal sealed class CashOperations(CommerceTransaction work)
         _ => throw new InvalidOperationException(),
     };
 
+    // El fondo inicial es también el primer efectivo esperado. Desde ese punto, las operaciones de efectivo explican cada diferencia.
     private async Task<Guid> OpenAsync()
     {
         if (await work.OpenCashAsync() is not null)
@@ -35,6 +38,7 @@ internal sealed class CashOperations(CommerceTransaction work)
         return entry.Id;
     }
 
+    // Al cerrar se compara el efectivo contado con el esperado. Cuando hay diferencia, el motivo explica por qué ambos importes no coinciden.
     private async Task<Guid> CloseAsync()
     {
         var session = await work.OpenCashAsync() ?? throw new CommerceFailure("No hay una caja abierta.", 409);
@@ -52,6 +56,7 @@ internal sealed class CashOperations(CommerceTransaction work)
         return entry.Id;
     }
 
+    // Distingue un gasto del negocio de una compra de mercadería. El medio de pago determina si sale efectivo de Caja.
     private async Task<Guid> ExpenseAsync()
     {
         var entry = await work.NewEntryAsync("GAS");
@@ -62,6 +67,7 @@ internal sealed class CashOperations(CommerceTransaction work)
         return entry.Id;
     }
 
+    // Un ajuste explica una entrada o salida manual con su propio concepto, para que pueda rastrearse al revisar la sesión.
     private async Task<Guid> AdjustAsync()
     {
         var session = await work.OpenCashAsync() ?? throw new CommerceFailure("Abre caja antes de registrar un ajuste.", 409);
@@ -80,6 +86,7 @@ internal sealed class CashOperations(CommerceTransaction work)
         return entry.Id;
     }
 
+    // La anulación registra un movimiento vinculado al gasto original para conservar ambas operaciones en el historial.
     private async Task<Guid> VoidExpenseAsync()
     {
         var original = await work.SourceAsync("expense");
@@ -96,12 +103,14 @@ internal sealed class CashOperations(CommerceTransaction work)
         return entry.Id;
     }
 
+    // Cobrar cancela el saldo pendiente del fiado. Si el pago fue en efectivo, el dinero entra en la Caja de ese momento.
     private async Task<Guid> CollectAsync()
     {
         var sale = await work.SourceAsync("sale", allowManualDebt: true);
         var debt = await work.Db.Set<Receivable>().FindAsync([work.Business.Id, sale.Id], work.Ct);
         if (debt is null || debt.BalanceMinor <= 0)
             throw new CommerceFailure("El fiado ya no tiene saldo pendiente.", 409);
+        // El importe visto antes puede haber cambiado, por ejemplo si ya se recibió otro movimiento. Se obliga a revisar el saldo real antes de registrar el cobro.
         if (work.Command.AmountMinor != debt.BalanceMinor)
             throw new CommerceFailure("El saldo cambió. Consulta el importe antes de cobrar.", 409);
 
@@ -113,10 +122,12 @@ internal sealed class CashOperations(CommerceTransaction work)
         entry.TotalMinor = debt.BalanceMinor;
         entry.DebtDeltaMinor = -debt.BalanceMinor;
         await work.ApplyCashAsync(entry, entry.TotalMinor);
+        // El saldo queda cancelado junto con el movimiento de cobro al guardar la transacción.
         debt.BalanceMinor = 0;
         return entry.Id;
     }
 
+    // Un fiado manual queda ligado a un cliente para que el saldo pendiente tenga un responsable identificable.
     private async Task<Guid> RegisterDebtAsync()
     {
         if (!(await work.SettingsAsync()).AllowNewCredit)
@@ -138,6 +149,7 @@ internal sealed class CashOperations(CommerceTransaction work)
         return entry.Id;
     }
 
+    // Cancelar un fiado manual deja una referencia al registro original para poder reconstruir su historial.
     private async Task<Guid> VoidDebtAsync()
     {
         var original = await work.SourceAsync("manual-debt");

@@ -5,6 +5,7 @@ using KhypuPyme.Api.Retail;
 using KhypuPyme.Api.Services;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Prepara las lecturas que necesitan las pantallas. Cada método proyecta los datos al formato que devuelve la API.
 namespace KhypuPyme.Api.Commerce;
 
 internal sealed class CommerceReads(KhypuPymeDbContext db, TimeProvider clock, StoreReads store)
@@ -12,6 +13,7 @@ internal sealed class CommerceReads(KhypuPymeDbContext db, TimeProvider clock, S
     private const int PageSize = 20;
     private IQueryable<Entry> Entries => db.Set<Entry>().AsNoTracking();
 
+    // Consulta operaciones existentes para que Inicio muestre la preparación real del negocio.
     public Task<SetupStatus> SetupAsync(Guid businessId, CancellationToken ct) => db.Businesses.Where(b => b.Id == businessId)
         .Select(b => new SetupStatus(
             db.Set<CashSession>().Any(x => x.BusinessId == b.Id),
@@ -19,6 +21,7 @@ internal sealed class CommerceReads(KhypuPymeDbContext db, TimeProvider clock, S
             Entries.Any(x => x.BusinessId == b.Id && x.Kind == "sale")))
         .SingleAsync(ct);
 
+    // Compone búsqueda y filtros antes de pedir una página. Así la búsqueda encuentra coincidencias fuera de los resultados que ya se ven.
     public Task<CommercePage<ProductInfo>> ProductsAsync(string? search, bool? active, string? attention,
         string? vehicleBrand, string? vehicleModel, int? year, bool? service, int? page, CancellationToken ct)
     {
@@ -34,6 +37,7 @@ internal sealed class CommerceReads(KhypuPymeDbContext db, TimeProvider clock, S
     public Task<ProductInfo?> ProductAsync(Guid id, CancellationToken ct) =>
         store.Describe(db.Set<Product>().AsNoTracking().Where(x => x.Id == id)).SingleOrDefaultAsync(ct);
 
+    // Recupera fichas por sus identificadores en una sola petición del cliente, por ejemplo al mostrar varias líneas del carrito.
     public async Task<ProductInfo[]> ProductBatchAsync(Guid businessId, string ids, CancellationToken ct)
     {
         if (ids.Length > 3699) throw new CommerceFailure("Consulta hasta 100 productos.");
@@ -50,6 +54,7 @@ internal sealed class CommerceReads(KhypuPymeDbContext db, TimeProvider clock, S
         return products;
     }
 
+    // Devuelve combinaciones de largo, espesor y ancho. El total por producto por sí solo no dice si alcanza para la medida elegida.
     public Task<CommercePage<TimberStockInfo>> TimberStockAsync(Guid productId, long? length, long? thickness, long? width,
         string? widths, string? category, int? page, CancellationToken ct)
     {
@@ -90,6 +95,7 @@ internal sealed class CommerceReads(KhypuPymeDbContext db, TimeProvider clock, S
         db.Set<Customer>().AsNoTracking().Where(x => x.Id == id).Select(x => new CustomerInfo(x.Id, x.Name, x.Phone, x.Code))
             .SingleOrDefaultAsync(ct);
 
+    // Permite reconstruir qué pasó filtrando por tipo, fecha o sesión de Caja, según la pantalla desde la que se consulta.
     public Task<CommercePage<EntryInfo>> HistoryAsync(string? kind, Guid? cashSession, DateOnly? from, DateOnly? to,
         string? search, int? page, CancellationToken ct)
     {
@@ -114,6 +120,7 @@ internal sealed class CommerceReads(KhypuPymeDbContext db, TimeProvider clock, S
             Entries.Any(next => next.SourceId == x.Id && (next.Kind == "sale" || next.Kind == "void-expense")))), page, ct);
     }
 
+    // Reconstruye el comprobante a partir de los campos guardados al confirmar la operación para que su contenido no dependa del catálogo actual.
     public async Task<EntryDocument?> DocumentAsync(Guid id, CancellationToken ct)
     {
         var entry = await Entries.Include(x => x.Lines).SingleOrDefaultAsync(x => x.Id == id, ct);
@@ -164,6 +171,7 @@ internal sealed class CommerceReads(KhypuPymeDbContext db, TimeProvider clock, S
         return PageAsync(query, page, ct);
     }
 
+    // Agrupa los movimientos del rango por día y devuelve por separado ventas, costo, compras, gastos y pérdidas.
     public async Task<CommerceReport> ReportAsync(Guid businessId, DateOnly? from, DateOnly? to, CancellationToken ct)
     {
         var today = LocalDate(clock.GetUtcNow());
@@ -199,6 +207,7 @@ internal sealed class CommerceReads(KhypuPymeDbContext db, TimeProvider clock, S
         return value.Length == 0 ? null : "%" + value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
     }
 
+    // Pide una fila extra para detectar si existe otra página sin tener que contar toda la tabla.
     internal static async Task<CommercePage<T>> PageAsync<T>(IQueryable<T> query, int? page, CancellationToken ct, int size = PageSize)
     {
         var number = page ?? 1;

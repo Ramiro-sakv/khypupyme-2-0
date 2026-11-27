@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using KhypuPyme.Api.Commerce;
 using KhypuPyme.Api.Retail;
 
+// Las reglas de operación son ajustes del negocio, como el descuento máximo, la vigencia de una cotización y el fiado.
 namespace KhypuPyme.Api.Businesses;
 
 public sealed record OperatingPolicy(int Revision, string DefaultPayment, int MaxDiscountPercent,
@@ -23,6 +24,7 @@ internal static class BusinessPolicy
     public const int QuoteDays = 7;
     public const int LotAlertDays = 30;
 
+    // Compara la revisión del formulario con la guardada en la base. Si otra persona cambió las reglas, el formulario anterior no las sobrescribe.
     public static async Task<Guid> UpdateAsync(CommerceTransaction work)
     {
         var input = work.Command.Policy ?? throw new CommerceFailure("Indica las reglas de operación.");

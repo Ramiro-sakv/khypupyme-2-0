@@ -3,12 +3,14 @@ using KhypuPyme.Api.Commerce;
 using Microsoft.EntityFrameworkCore;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Este servicio cambia una cita u orden según las reglas de su rubro y usa el flujo de ventas para registrar el cobro.
 namespace KhypuPyme.Api.Services;
 
 internal sealed class WorkOperations(CommerceTransaction work)
 {
     public static bool Supports(string industry) => industry is "beauty" or "cleaning" or "professional" or "repair" or "crafts";
 
+    // Valida datos y agenda antes de crear o editar. Una revisión obsoleta o un horario en conflicto impiden guardar.
     public async Task<Guid> SaveAsync()
     {
         var industry = work.Business.Industry;
@@ -64,6 +66,7 @@ internal sealed class WorkOperations(CommerceTransaction work)
         return row.Id;
     }
 
+    // El estado actual determina a qué estado se permite avanzar. Así una orden sigue su recorrido y se evita saltar pasos.
     public async Task<Guid> TransitionAsync()
     {
         var row = await LoadAsync(work.Command.WorkLink);
@@ -94,6 +97,7 @@ internal sealed class WorkOperations(CommerceTransaction work)
         return row.Id;
     }
 
+    // Emite la constancia de recepción del equipo que entra al taller antes de realizar el trabajo.
     public async Task<Guid> ReceiveAsync()
     {
         var row = await LoadAsync(work.Command.WorkLink);
@@ -112,6 +116,7 @@ internal sealed class WorkOperations(CommerceTransaction work)
         return entry.Id;
     }
 
+    // Registra una constancia de la orden, con datos propios del rubro que se conservarán en el comprobante.
     public async Task<Guid> IssueReceiptAsync()
     {
         var row = await LoadAsync(work.Command.WorkLink);
@@ -137,6 +142,7 @@ internal sealed class WorkOperations(CommerceTransaction work)
         return entry.Id;
     }
 
+    // Liga la venta al trabajo dentro de la misma transacción. Valida estado, cliente y servicio y evita un segundo cobro.
     public async Task LinkSaleAsync(Entry sale, CommandLine[] lines)
     {
         if (work.Command.WorkLink is null) return;
@@ -151,6 +157,7 @@ internal sealed class WorkOperations(CommerceTransaction work)
         row.Revision++;
     }
 
+    // Busca la orden del negocio y verifica su revisión. Si cambió, la pantalla debe abrirla de nuevo antes de actuar.
     private async Task<WorkItem> LoadAsync(WorkRevision? link, bool billing = false)
     {
         if (link is null) throw new CommerceFailure("Elige una cita u orden.");

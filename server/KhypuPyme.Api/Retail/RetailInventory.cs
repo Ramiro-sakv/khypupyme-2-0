@@ -3,6 +3,7 @@ using KhypuPyme.Api.Commerce;
 using Microsoft.EntityFrameworkCore;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Este inventario trabaja con cantidades convertidas a una unidad base y puede controlarlas por lote. El lote de origen se conserva en las líneas de venta y devolución.
 namespace KhypuPyme.Api.Retail;
 
 internal sealed class RetailInventory(CommerceTransaction work)
@@ -10,9 +11,11 @@ internal sealed class RetailInventory(CommerceTransaction work)
     private readonly HashSet<(Guid, string)> touched = [];
     private DbSet<RetailLot> Lots => work.Db.Set<RetailLot>();
 
+    // Filtra los lotes que se pueden vender a la fecha de la operación. Un lote vencido o apartado sigue registrado para control.
     public static IQueryable<RetailLot> SellableLots(IQueryable<RetailLot> lots, DateOnly day) =>
         lots.Where(x => !x.Held && (x.ExpiresOn == null || x.ExpiresOn >= day));
 
+    // Agrega cantidad y costo en la unidad base. Cuando la ficha lleva lotes, también actualiza la cantidad y el valor del lote.
     public async Task<LotAllocation[]> BuyAsync(Product product, RetailInput input, decimal quantity, long cost)
     {
         if (!product.TrackLots)
@@ -29,6 +32,7 @@ internal sealed class RetailInventory(CommerceTransaction work)
         return [allocation];
     }
 
+    // Si no se elige un lote, asigna primero los que vencen antes. Devuelve el costo y los lotes tomados para guardarlos en el comprobante.
     public async Task<(long Cost, LotAllocation[] Lots)> RemoveAsync(Product product, RetailInput input, decimal quantity,
         bool loss = false, bool preferredLot = false)
     {
@@ -70,6 +74,7 @@ internal sealed class RetailInventory(CommerceTransaction work)
         return (total, selected.ToArray());
     }
 
+    // Registra apartados, liberaciones o bajas mediante una operación auditada. Su historial permite explicar por qué cambió la disponibilidad.
     public async Task<Guid> CorrectLotAsync()
     {
         if (work.Business.Industry is not ("cosmetics" or "convenience"))
@@ -108,6 +113,7 @@ internal sealed class RetailInventory(CommerceTransaction work)
         return entry.Id;
     }
 
+    // Usa las asignaciones y el costo de la venta original para devolver las unidades a su origen cuando corresponde.
     public async Task<(long Cost, LotAllocation[] Lots)> RefundAsync(Product product, LineDetails detail, decimal before, decimal count,
         long originalCost, bool restock)
     {
@@ -164,6 +170,7 @@ internal sealed class RetailInventory(CommerceTransaction work)
         product.ValueMinor -= cost;
     }
 
+    // Controla cuántos lotes toca un mismo comando, acotando el tamaño de la operación.
     private void Touch(Guid product, string lot)
     {
         if (touched.Add((product, lot)) && touched.Count > 100)

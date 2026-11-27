@@ -9,18 +9,22 @@ using KhypuPyme.Api.Security;
 using Microsoft.EntityFrameworkCore;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Publica las rutas comerciales y convierte los resultados en respuestas HTTP. Los servicios aplican las reglas y coordinan PostgreSQL.
 namespace KhypuPyme.Api.Commerce;
 
 internal static class CommerceEndpoints
 {
     public static void MapCommerce(this WebApplication app)
     {
+        // businessId identifica el negocio que se quiere consultar o modificar.
         MapGroup(app.MapGroup("/api/v1/businesses/{businessId:guid}/commerce"));
+        // La práctica usa una ruta propia y se identifica con PracticeCommerce.
         MapGroup(app.MapGroup("/api/v1/businesses/{businessId:guid}/practice-commerce").WithMetadata(new PracticeCommerce()), practice: true);
     }
 
     private static void MapGroup(RouteGroupBuilder group, bool practice = false)
     {
+        // Las lecturas y las escrituras requieren una sesión de cuenta válida.
         group.WithTags("Comercio").RequireAuthorization("Account");
         var reads = group.MapGroup("").AddEndpointFilter<ReadCommerceScope>();
         reads.MapGet("/products", (string? search, bool? active, string? attention, string? vehicleBrand, string? vehicleModel, int? year,
@@ -103,7 +107,9 @@ internal static class CommerceEndpoints
                     .Select(x => new AuditInfo(x.OperationId, x.AccountId, x.At, x.Kind, x.Reason, x.EntityId, x.Effect)), page, ct))
                 .Produces<CommercePage<AuditInfo>>();
         }
+        // Para el navegador, el filtro comprueba el token que acompaña al formulario.
         var writes = group.MapGroup("").AddEndpointFilter<CsrfFilter>();
+        // Aquí llega la venta enviada desde el botón Confirmar.
         writes.MapPost("/commands", ExecuteAsync).Produces<CommandResult>();
         writes.MapPost("/commands/{id:guid}/ack", AcknowledgeAsync);
     }
@@ -113,17 +119,28 @@ internal static class CommerceEndpoints
     private static async Task<IResult> ExecuteAsync(Guid businessId, CommerceCommand request, HttpContext http,
         CommerceService service, CancellationToken ct)
     {
+        // El servidor deduce si es una práctica a partir de la ruta que recibió.
         var practice = http.GetEndpoint()?.Metadata.GetMetadata<PracticeCommerce>() is not null;
-        try { return Results.Ok(await service.ExecuteAsync(BusinessAccess.AccountId(http), businessId, request, practice, ct)); }
-        catch (CommerceFailure error) { return AuthErrors.Fail(error.Message, error.Status); }
+        try
+        {
+            // La identidad sale de la sesión autenticada. request contiene los datos de la venta.
+            return Results.Ok(await service.ExecuteAsync(BusinessAccess.AccountId(http), businessId, request, practice, ct));
+        }
+        catch (CommerceFailure error)
+        {
+            // Convierte el rechazo de negocio en una respuesta HTTP. El carrito muestra su mensaje.
+            return AuthErrors.Fail(error.Message, error.Status);
+        }
     }
 
+    // Busca por negocio e identificador de solicitud. La pantalla puede recuperar el recibo de una operación confirmada cuando perdió la respuesta.
     private static async Task<IResult> StatusAsync(Guid businessId, Guid id, KhypuPymeDbContext db, CancellationToken ct)
     {
         var found = await db.Set<CommerceReceipt>().AsNoTracking().SingleOrDefaultAsync(x => x.Id == id && x.BusinessId == businessId, ct);
         return found is null ? Results.NotFound() : Results.Ok(new CommandResult(found.Id, found.Kind, found.EntityId));
     }
 
+    // Anota que el cliente ya recibió el resultado. Conserva el comprobante y permite distinguir resultados confirmados que todavía necesitan recuperación.
     private static async Task<IResult> AcknowledgeAsync(Guid businessId, Guid id, HttpContext http, BusinessAccess access,
         KhypuPymeDbContext db, TimeProvider clock, CancellationToken ct)
     {
@@ -145,6 +162,7 @@ internal static class CommerceEndpoints
     }
 }
 
+// Abre el contexto autorizado de las lecturas y comprueba si la ruta pertenece a práctica o al negocio habitual. La transacción mantiene una vista consistente durante la consulta.
 internal sealed class ReadCommerceScope(BusinessAccess access, KhypuPymeDbContext db) : IEndpointFilter
 {
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)

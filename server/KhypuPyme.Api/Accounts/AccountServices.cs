@@ -8,10 +8,13 @@ using KhypuPyme.Api.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 
+// Aquí se configuran identidad, cookies, códigos y clientes instalados.
+// Las rutas heredan estas reglas al utilizar los servicios registrados.
 namespace KhypuPyme.Api.Accounts;
 
 internal static class AccountServices
 {
+    // Registra las dependencias de cuentas al iniciar la API. ASP.NET entrega esas instancias a las rutas que las piden.
     public static void AddAccounts(this WebApplicationBuilder builder, PilotOptions pilot)
     {
         var services = builder.Services;
@@ -34,12 +37,14 @@ internal static class AccountServices
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<LocalMailbox>();
         services.AddScoped<EmailCodes>();
+        // Define el nombre de la cabecera y la seguridad de la cookie del token. La API y React deben usar el mismo nombre.
         services.AddAntiforgery(options =>
         {
             options.HeaderName = "X-CSRF-TOKEN";
             options.Cookie.Name = "KhypuPyme2.Antiforgery";
             options.Cookie.SecurePolicy = local ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
         });
+        // Limita los intentos por dirección de red durante una ventana de tiempo para proteger el ingreso y la recuperación.
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = 429;
@@ -48,6 +53,7 @@ internal static class AccountServices
                 _ => new FixedWindowRateLimiterOptions { PermitLimit = 90, Window = TimeSpan.FromMinutes(1) }));
         });
 
+        // Configura el correo único, la confirmación y el bloqueo de la cuenta. Identity administra los hashes y el acceso.
         services.AddIdentityCore<IdentityUser<Guid>>(options =>
         {
             options.User.RequireUniqueEmail = true;
@@ -71,6 +77,7 @@ internal static class AccountServices
                     : IdentityConstants.ApplicationScheme;
             });
         authentication.AddIdentityCookies();
+        // Aquí se decide cuándo vence la sesión y cómo responde la API cuando falta permiso para seguir.
         services.ConfigureApplicationCookie(options =>
         {
             options.Cookie.Name = "KhypuPyme2.Session";
@@ -101,6 +108,7 @@ internal static class AccountServices
             });
         }
 
+        // OpenIddict administra los códigos y tokens de Android y Windows. PKCE liga el código a la app que inició el ingreso.
         services.AddOpenIddict()
             .AddCore(options => options.UseEntityFrameworkCore().UseDbContext<KhypuPymeDbContext>().ReplaceDefaultEntities<Guid>())
             .AddServer(options =>

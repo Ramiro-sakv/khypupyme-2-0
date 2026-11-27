@@ -1,3 +1,5 @@
+// Consulta el acceso del negocio y decide cuándo se muestra el panel de planes. Proporciona a las pantallas el estado de lectura de la licencia.
+
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { get } from "../api/client";
@@ -23,6 +25,7 @@ export function PlanGate({ business, forced, onEnter, back, children }: {
 
   useEffect(() => {
     let activeRequest: AbortController | undefined;
+    // Recarga el estado de licencia para actualizar el acceso a partir de los datos que devuelve el servidor.
     function load() {
       activeRequest?.abort();
       const controller = new AbortController();

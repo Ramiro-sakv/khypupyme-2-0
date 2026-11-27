@@ -1,3 +1,5 @@
+// Controla la práctica de madera y su guía. Renderiza las pantallas habituales con el negocio de práctica que devuelve la API.
+
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { change, get } from "../api/client";
@@ -59,6 +61,7 @@ export function TimberPractice({ business, accountId, home, onExit, render }: {
     return () => { abort.abort(); window.removeEventListener("focus", read); };
   }, [path, key, accountId, revision, busy]);
 
+  // Envía el paso pedido al servidor. Su respuesta determina si la práctica continúa, se pausa o está lista para cerrarse.
   async function act(action: string) {
     if (busy) return;
     setBusy(true);
@@ -123,6 +126,7 @@ export function TimberPractice({ business, accountId, home, onExit, render }: {
 type Position = { x: number; y: number };
 const margin = 8;
 
+// Muestra las instrucciones asociadas al paso actual y permite usar acciones reales de la pantalla en el espacio de práctica.
 export function PracticeGuide({ controls, view, navigate }: {
   controls: PracticeControls; view: WorkspaceView; navigate: (view: WorkspaceView) => void;
 }) {
@@ -135,6 +139,7 @@ export function PracticeGuide({ controls, view, navigate }: {
   const pointer = useRef<{ x: number; y: number }>(null);
   const step = steps[session.step];
 
+  // Limita la posición al espacio visible para que la guía pueda seguir abriéndose y moviéndose en pantallas estrechas.
   function clamp(value: Position): Position {
     const bounds = panel.current?.getBoundingClientRect();
     return {

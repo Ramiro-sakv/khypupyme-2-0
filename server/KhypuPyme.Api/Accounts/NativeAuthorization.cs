@@ -6,10 +6,13 @@ using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
+// El ingreso de la app instalada abre un navegador y devuelve un código al cliente.
+// Ese código se intercambia por tokens para que Windows o Android puedan usar la API.
 namespace KhypuPyme.Api.Accounts;
 
 internal static class NativeAuthorization
 {
+    // Valida la ruta a la que se permite regresar después de iniciar sesión en el navegador.
     public static bool IsAuthorizePath(string? path) =>
         path?.StartsWith("/connect/authorize?", StringComparison.Ordinal) == true;
 
@@ -19,6 +22,7 @@ internal static class NativeAuthorization
         app.MapPost("/connect/token", ExchangeAsync).ExcludeFromDescription();
     }
 
+    // Usa la sesión web y las reglas del cliente registrado para emitir la autorización del dispositivo.
     private static async Task<IResult> AuthorizeAsync(HttpContext context,
         SignInManager<IdentityUser<Guid>> signIn, PilotOptions pilot)
     {
@@ -46,6 +50,7 @@ internal static class NativeAuthorization
         return Results.SignIn(principal, authenticationScheme: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 
+    // Resuelve el intercambio del código o la renovación de tokens y vuelve a comprobar el acceso de la cuenta.
     private static async Task<IResult> ExchangeAsync(HttpContext context,
         SignInManager<IdentityUser<Guid>> signIn, PilotOptions pilot)
     {
@@ -66,6 +71,7 @@ internal static class NativeAuthorization
             [OpenIddictServerAspNetCoreConstants.Properties.Error] = error,
         }), [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme]);
 
+    // Registra los identificadores y direcciones de retorno permitidas de los clientes instalados.
     public static async Task RegisterClientsAsync(IServiceProvider services, IConfiguration configuration)
     {
         await using var scope = services.CreateAsyncScope();

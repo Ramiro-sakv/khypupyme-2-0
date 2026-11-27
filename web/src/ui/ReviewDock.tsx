@@ -1,3 +1,5 @@
+// Muestra la pestaña flotante y el diálogo de revisión. Cada operación le pasa su total, formulario y destino de foco.
+
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
 import { Button } from "./Primitives";
@@ -19,8 +21,10 @@ export function ReviewDock({ total, cartFocus, children, description, operation,
   const panel = useRef<HTMLDialogElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
+  // Este estado controla el tamaño de la barra. Los datos de la operación siguen perteneciendo al componente que creó el carrito.
   const [minimized, setMinimized] = useState(false);
 
+  // Mide y reserva espacio para que la barra fija no cubra controles. Las medidas cambian al redimensionar u ocultar la barra.
   useLayoutEffect(() => {
     const anchor = slot.current;
     const bar = dock.current;
@@ -62,6 +66,7 @@ export function ReviewDock({ total, cartFocus, children, description, operation,
     };
   }, [visible, minimized]);
 
+  // Tras cerrar la revisión, devuelve el teclado al carrito si sigue en pantalla. Usa el botón de revisión como alternativa.
   function restoreFocus() {
     if (!visible) return;
     const target = cartFocus.current;

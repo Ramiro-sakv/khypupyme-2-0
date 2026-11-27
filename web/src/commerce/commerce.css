@@ -1,3 +1,5 @@
+/* Estilos compartidos de pantallas comerciales y controles de rubro. Aquí se agrupan carrito, lector, partidas, madera y práctica. */
+
 .workspace-nav { max-height: calc(100dvh - 2rem); overflow: auto; }
 .mobile-nav-more { display: none; }
 .commerce-business-label { margin: 0 0 .55rem; color: var(--accent); font-weight: var(--weight-label); overflow-wrap: anywhere; }
@@ -13,6 +15,7 @@
 .commerce-top { margin-top: .65rem; }
 .record-secondary, .trade-issue { display: block; margin-top: .2rem; color: var(--muted); font-weight: 400; }
 .trade-issue { color: #842e24; }
+/* En pantallas amplias, catálogo y carrito van juntos. La consulta de medios de abajo los coloca en una sola columna cuando el ancho disminuye. */
 .trade-split { display: grid; grid-template-columns: minmax(16rem, 1fr) minmax(0, 1.42fr); gap: 1rem; align-items: start; }
 .trade-split .commerce-search { margin-top: .7rem; }
 .trade-products { list-style: none; padding: 0; display: grid; gap: .55rem; }
@@ -35,6 +38,7 @@
 .return-line { display: grid; padding: .55rem 0 .25rem; border-bottom: 1px solid var(--line); }
 .document-summary { margin: .85rem 0 .35rem; }
 .report-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: .8rem; }
+/* Distingue una solicitud cuyo resultado debe verificarse antes de volver a enviar. Sus mensajes se ajustan al ancho disponible. */
 .pending-box { display: grid; gap: .4rem; overflow-wrap: anywhere; padding: .85rem; margin-bottom: .8rem; background: #f7edd7; border: 1px solid #e4d0a8; border-radius: .65rem; }
 .pending-box > span { color: #514b40; font-size: .82rem; }
 .store-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: .6rem; }
@@ -53,6 +57,7 @@
 .compatibility-details { margin-top: .4rem; font-weight: 400; }
 .compatibility-details summary { cursor: pointer; min-height: 44px; align-content: center; }
 @media (max-width: 440px) { .barcode-field { grid-template-columns: minmax(0, 1fr); } }
+/* Agrupa la captura y el desglose de medidas de una madera dentro del carrito. */
 .timber-group { display: grid; gap: .75rem; background: var(--surface); }
 .timber-group :is(h3, p), .practice-guide p { margin-block: .2rem; }
 .timber-trade, .timber-rates { display: grid; gap: .35rem; margin-block: .75rem; }
@@ -60,6 +65,8 @@
 .timber-widths { display: grid; gap: .35rem; grid-column: 1 / -1; }
 .timber-widths textarea { width: 100%; padding: .65rem; border: 1px solid var(--line); border-radius: .6rem; resize: vertical; font: inherit; }
 .practice-entry { margin-bottom: 1rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .8rem; }
+
+/* La guía flotante tiene su propio cuerpo desplazable. Así sigue siendo legible en una pantalla de poca altura. */
 .practice-guide {
   --guide-bottom: calc(5.5rem + var(--review-space, 0px));
   --guide-available: calc(100dvh - var(--guide-bottom) - .5rem);

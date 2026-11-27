@@ -4,6 +4,7 @@ using KhypuPyme.Api.Persistence;
 using KhypuPyme.Api.Timber;
 using Microsoft.EntityFrameworkCore;
 
+// La baja de un negocio se guarda como tarea separada. Si la limpieza se interrumpe, el titular puede consultar el estado y reanudarla.
 namespace KhypuPyme.Api.Security;
 
 internal sealed class BusinessRemoval(KhypuPymeDbContext db, BusinessAccess access, SecurityProofs proofs, TimeProvider clock)
@@ -23,6 +24,7 @@ internal sealed class BusinessRemoval(KhypuPymeDbContext db, BusinessAccess acce
         return job is null ? null : Show(job);
     }
 
+    // Verifica la preparación de la baja y solicita el código del correo asociado a la aprobación.
     public async Task SendCodeAsync(Guid owner, Guid id, IdentityConfirmation input, CancellationToken ct)
     {
         await using var tx = await access.OpenAsync(owner, id, ct);
@@ -31,6 +33,7 @@ internal sealed class BusinessRemoval(KhypuPymeDbContext db, BusinessAccess acce
         await proofs.SendDeletionCodeAsync(tx, proof, ct);
     }
 
+    // Canjea la confirmación y registra el trabajo pendiente antes de que se ejecute la limpieza.
     public async Task<BusinessDeletionInfo> ConfirmAsync(Guid owner, Guid id, IdentityConfirmation input, CancellationToken ct)
     {
         await using var tx = await access.OpenAsync(owner, id, ct);
@@ -46,6 +49,7 @@ internal sealed class BusinessRemoval(KhypuPymeDbContext db, BusinessAccess acce
         return Show(job);
     }
 
+    // Limita la limpieza al negocio identificado y a su práctica vinculada. Después comprueba cuántos registros de negocio se retiraron.
     public async Task<BusinessDeletionInfo> ResumeAsync(Guid owner, Guid id, CancellationToken ct)
     {
         await using var tx = await access.OpenAsync(owner, id, ct);
@@ -69,6 +73,7 @@ internal sealed class BusinessRemoval(KhypuPymeDbContext db, BusinessAccess acce
         return Show(job);
     }
 
+    // Una Caja abierta o una solicitud sin revisar pueden ocultar un saldo pendiente. Por eso bloquean la baja.
     public async Task RequireIdleAsync(Guid owner, Guid business, CancellationToken ct)
     {
         var sandbox = await SandboxAsync(business, ct);
@@ -90,6 +95,7 @@ internal sealed class BusinessRemoval(KhypuPymeDbContext db, BusinessAccess acce
         }
     }
 
+    // Comprueba el dueño, el nombre exacto y los movimientos pendientes antes de preparar una acción de borrado.
     private async Task<Business> PrepareAsync(Guid owner, Guid id, string? name, CancellationToken ct)
     {
         await access.LockBusinessAsync(id, ct);

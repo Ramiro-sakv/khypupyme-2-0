@@ -1,3 +1,5 @@
+// Conecta la navegación con las pantallas del negocio activo. Aquí se decide qué vista se muestra y qué contexto recibe.
+
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import { Icon } from "../ui/Icon";
@@ -52,6 +54,7 @@ const workspaceViews = [
 ] as const;
 export type WorkspaceView = typeof workspaceViews[number];
 export type BusinessView = WorkspaceView | "negocios" | "crear";
+// Comprueba el nombre llegado desde la URL contra las vistas conocidas antes de utilizarlo como una pantalla válida.
 export function isWorkspaceView(value: string | null): value is WorkspaceView {
   return workspaceViews.some((view) => view === value);
 }
@@ -123,6 +126,7 @@ export function BusinessWorkspace({ accountId, business, industry, view, workId,
     };
   }, []);
 
+  // Recibe la vista y un objetivo opcional. Un atajo puede abrir la pantalla y dirigir el foco a la tarea que se quiere empezar.
   function go(next: BusinessView, target = "", work = "") {
     if (tradeViews.has(next)) void loadTradePage().catch(() => undefined);
     setDocument(undefined);
@@ -132,11 +136,13 @@ export function BusinessWorkspace({ accountId, business, industry, view, workId,
     else if (target === "sales") setHistoryKind("sale");
     navigate(next, false, work);
   }
+  // Lee otra vez los ajustes del servidor cuando cambia una preferencia que otras pantallas necesitan.
   async function refreshSettings() {
     setSettingsError("");
     try { onSave(await get<BusinessProfile>(businessApi + "/" + business.id)); }
     catch { setSettingsError("No se pudo cargar la última configuración. Vuelve a consultarla."); }
   }
+  // Guarda el identificador que se quiere consultar al pasar a Documentos para abrir ese comprobante concreto.
   function openDocument(id: string) {
     setDocument({ id, origin: view, work: workId });
     window.scrollTo(0, 0);
@@ -154,12 +160,14 @@ export function BusinessWorkspace({ accountId, business, industry, view, workId,
       <Icon name={item.icon} /><span>{item.name}</span>
     </a>;
   }
+  // Las compras, ventas y cotizaciones pueden compartir pantalla. El tipo de operación determina qué formulario y reglas se aplican.
   function trade(kind: TradeKind) {
     return <TradePage key={kind} kind={kind} units={units} industry={business.industry} policy={practice ? undefined : business.policy} scan={focus === "scan"} proposal={kind === "sale" ? quote : undefined}
       onOpenCatalog={() => go("catalogo")} showHistory={tradeArchive === kind} setShowHistory={(visible) => setTradeArchive(visible ? kind : undefined)}
       dismissProposal={() => setQuote(undefined)} onHistory={() => { setHistoryKind(kind); go("historial"); }}
       onStockBack={kind === "stock-in" ? () => go("catalogo") : undefined} />;
   }
+  // Selecciona la pantalla que corresponde a la ruta actual y le pasa las acciones y datos del negocio activo.
   function renderView() {
     if (documentId) return <DocumentPage key={documentId} id={documentId} back={() => setDocument(undefined)}
       deliveries={delivery && !practice}
@@ -269,6 +277,7 @@ export function BusinessWorkspace({ accountId, business, industry, view, workId,
   </div>;
 }
 
+// Cuando cambia la pantalla, dirige el foco al área de trabajo para que el teclado siga el cambio de vista.
 function WorkspaceScreen({ focusKey, children }: { focusKey: string; children: ReactNode }) {
   const content = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -277,6 +286,7 @@ function WorkspaceScreen({ focusKey, children }: { focusKey: string; children: R
   return <div ref={content}>{children}</div>;
 }
 
+// Prepara el cobro desde una orden o cita. La venta conserva la referencia al trabajo que la originó.
 function WorkSale({ id, industry, policy, back }: { id: string; industry: string; policy?: OperatingPolicy; back: () => void }) {
   const source = useCommerceData<Work>("/work/" + id);
   const serviceId = source.data?.serviceId;
@@ -290,6 +300,7 @@ function WorkSale({ id, industry, policy, back }: { id: string; industry: string
     workService={service.data} onWorkBack={back} />;
 }
 
+// Reúne caja, informe y accesos rápidos para mostrar en Inicio datos confirmados por el servidor.
 function CommercialHome({ business, industry, icon, navigate, openSalesHistory, readOnly }: {
   business: BusinessProfile; industry: string; icon: IconName; navigate: (view: BusinessView, focus?: string) => void;
   openSalesHistory: () => void; readOnly: boolean;
@@ -321,6 +332,7 @@ function CommercialHome({ business, industry, icon, navigate, openSalesHistory, 
       <IndustryAttention industry={business.industry} lotAlertDays={business.policy?.lotAlertDays} navigate={navigate} />} />;
 }
 
+// Consulta los avisos de inventario que corresponden al rubro. Desde un aviso se abre el listado que permite revisarlo.
 function IndustryAttention({ industry, lotAlertDays = 30, navigate }: { industry: string; lotAlertDays?: number; navigate: (view: BusinessView, focus?: string) => void }) {
   const attention = useCommerceData<StoreAttention>("/attention");
   const store = measuredIndustry(industry);

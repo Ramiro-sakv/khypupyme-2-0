@@ -4,6 +4,7 @@ using KhypuPyme.Api.Commerce;
 using Microsoft.EntityFrameworkCore;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Las fichas de muebles, cerámica, cemento y ferretería incluyen datos que sirven para calcular o describir una operación, como dimensiones o cobertura.
 namespace KhypuPyme.Api.Retail;
 
 public sealed record FurnitureDimensions(decimal WidthCm, decimal DepthCm, decimal HeightCm);
@@ -19,6 +20,7 @@ internal static class MaterialProfiles
     public static MaterialProfile? Read(Product product) =>
         product.MaterialJson is null ? null : JsonSerializer.Deserialize<MaterialProfile>(product.MaterialJson);
 
+    // Comprueba que la configuración de materiales corresponda al rubro y conserva los detalles en la ficha.
     public static async Task SaveAsync(CommerceTransaction work, Product product)
     {
         var input = work.Command;
@@ -78,8 +80,10 @@ internal static class MaterialProfiles
 
     private static bool Positive(decimal value) => value is > 0 and <= 100_000m && decimal.Round(value, 3) == value;
 
+    // Serializa la ficha de materiales en JSON. Al volver a leerla, el servicio recupera los campos del rubro.
     private static void Write(Product product, MaterialProfile material) => product.MaterialJson = JsonSerializer.Serialize(material);
 
+    // Convierte superficie y merma a unidades enteras. La cantidad comprada debe cubrir la superficie solicitada aunque sea necesario redondear hacia arriba.
     public static TileCoverage CalculateTile(TileProfile tile, TileRequest? selection, string unit, int pieces, int boxSize)
     {
         selection ??= new(null, null, null, null);

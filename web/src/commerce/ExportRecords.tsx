@@ -1,3 +1,5 @@
+// Solicita al servidor la exportación comercial del negocio abierto. Guarda el resultado como archivo para consulta o respaldo de registros.
+
 import { useState } from "react";
 import { get } from "../api/client";
 import { downloadFile } from "../native/platform";
@@ -8,6 +10,7 @@ export function ExportRecords() {
   const { path } = useCommerce();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Solicita primero los datos del negocio y solo entonces ofrece el archivo mediante el mecanismo de descarga de la plataforma.
   async function save() {
     setBusy(true);
     setError("");

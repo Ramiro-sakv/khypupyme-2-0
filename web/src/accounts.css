@@ -1,4 +1,7 @@
+/* Define el contenedor general de la app y la composición de ingreso y cuenta. */
+
 .app-shell { max-width: 86rem; padding: 1rem clamp(.85rem, 3vw, 2.3rem) 2rem; margin: auto; }
+/* Al entrar a un negocio, el espacio de trabajo aprovecha un ancho mayor que la pantalla de ingreso. */
 .app-shell:has(.workspace) {
   max-width: none;
   padding-inline: clamp(.65rem, 1.35vw, 1.5rem);
@@ -22,6 +25,7 @@
 .intro p { color: #e1ece5; margin-top: 1rem; }
 .account-card { border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); padding: clamp(1rem, 4vw, 2rem); overflow-wrap: anywhere; }
 .account-card h2 { font-size: 1.4rem; }
+/* Los formularios de cuenta usan el mismo espacio entre controles para que ingreso, registro y recuperación se lean de forma consistente. */
 .account-form, .account-actions { display: grid; gap: .85rem; margin-top: 1rem; }
 .account-form .ui-alert { margin: 0; }
 .password-toggle { justify-self: end; }
@@ -35,6 +39,7 @@
 .wizard-steps li[aria-current="step"] { color: var(--accent); font-weight: var(--weight-emphasis); }
 .business-summary { display: grid; margin: 0; grid-template-columns: max-content minmax(0, 1fr); gap: .6rem; }
 .business-summary dd { margin: 0; }
+/* Adapta el encabezado y las acciones a pantallas más estrechas. */
 @media (max-width: 43rem) {
   .auth-layout { grid-template-columns: 1fr; }
   .intro img { max-height: 13rem; }

@@ -1,3 +1,5 @@
+// Muestra ayuda por rubro, ejemplos y accesos al recorrido correspondiente.
+
 import { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { Alert, Button, Card, TextField } from "../ui/Primitives";
@@ -62,6 +64,7 @@ export function BusinessHelp({ industry, units, navigate, readOnly }: {
   </div>;
 }
 
+// Presenta una ayuda breve en una operación para que el usuario pueda consultar el formato sin salir del carrito.
 export function TradeHelp({ industry }: { industry?: string }) {
   const guide = industry && INDUSTRY_GUIDES[industry as IndustryId];
   return guide ? <details className="trade-help"><summary>Ayuda para trabajar con este rubro</summary>
@@ -70,6 +73,7 @@ export function TradeHelp({ industry }: { industry?: string }) {
   </details> : null;
 }
 
+// Enseña el cálculo con valores de ejemplo. Es una consulta en la pantalla que no agrega movimientos al negocio.
 function IndustryCalculator({ industry, units }: { industry: string; units: TimberUnits }) {
   const wood = industry === "timber";
   const tile = industry === "ceramics";

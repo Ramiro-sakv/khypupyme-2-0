@@ -1,3 +1,4 @@
+// Agrupa las comprobaciones y cálculos comunes. Concentrarlos aquí permite que distintas operaciones interpreten el dinero y el stock del mismo modo.
 namespace KhypuPyme.Api.Commerce;
 
 internal sealed class CommerceFailure(string message, int status = 400) : Exception(message)
@@ -11,8 +12,10 @@ internal static class CommerceRules
     public const int QuantityLimit = 1_000_000;
     private static readonly TimeZoneInfo Bolivia = TimeZoneInfo.FindSystemTimeZoneById("America/La_Paz");
 
+    // Convierte la hora al calendario de Bolivia porque un cierre diario o la fecha comercial dependen del día local.
     public static DateOnly LocalDate(DateTimeOffset time) => DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(time, Bolivia).Date);
 
+    // Valida importes en centavos enteros para que las sumas monetarias mantengan una representación exacta.
     public static long Money(long? value, string label, bool positive = false)
     {
         if (value is null or > Limit || value < (positive ? 1 : 0))
@@ -37,7 +40,8 @@ internal static class CommerceRules
         _ => throw new CommerceFailure("Elige una forma de pago válida."),
     };
 
-    // La diferencia entre dos acumulados conserva hasta el último centavo.
+    // Resta dos importes acumulados para que las porciones sumen el total exacto.
+    // Por ejemplo, al repartir 100 centavos entre tres piezas quedan 33, 34 y 33.
     public static long Share(long amount, long start, long end, long total)
     {
         if (total == 0) return 0;
@@ -45,6 +49,7 @@ internal static class CommerceRules
         return At(end) - At(start);
     }
 
+    // Aplica los límites de captura antes de preparar las operaciones y ajusta las comprobaciones al tipo de movimiento.
     public static CommandLine[] Lines(CommandLine[]? lines, bool returning = false, bool buying = false)
     {
         if (lines is not { Length: >= 1 and <= 100 } ||
@@ -57,6 +62,7 @@ internal static class CommerceRules
         return lines;
     }
 
+    // Actualiza cantidad y valor de inventario juntos porque una entrada cambia tanto las existencias como su costo registrado.
     public static void AddStock(Product product, int quantity, long value)
     {
         if (product.Stock + quantity > QuantityLimit)
@@ -65,6 +71,7 @@ internal static class CommerceRules
         product.ValueMinor = Money(product.ValueMinor + value, "un valor de existencias");
     }
 
+    // Comprueba el saldo y calcula el costo que sale. Ese costo se utiliza después para registrar cuánto valía la mercadería vendida.
     public static long RemoveStock(Product product, int quantity)
     {
         if (quantity > product.Stock)

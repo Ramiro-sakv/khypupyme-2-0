@@ -2,10 +2,12 @@ using System.Globalization;
 using KhypuPyme.Api.Commerce;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Este módulo convierte bolsas de cemento en inventario a granel. La unidad disponible cambia y la operación conserva la masa y el valor.
 namespace KhypuPyme.Api.Retail;
 
 internal sealed class CementOperations(CommerceTransaction work)
 {
+    // Descuenta las bolsas del lote de origen y suma la cantidad equivalente de material a granel. Ambos lados quedan en el mismo movimiento.
     public async Task<Guid> OpenAsync()
     {
         if (work.Business.Industry != "cement" || work.Command.StockQuantity is not int bags || bags is < 1 or > QuantityLimit)
@@ -33,6 +35,7 @@ internal sealed class CementOperations(CommerceTransaction work)
         return entry.Id;
     }
 
+    // Prepara el detalle que permitirá comprobar qué salió en bolsas y qué entró como granel.
     private static EntryLine Line(Entry entry, Product product, RetailInput measure, decimal quantity,
         LotAllocation[] lots, long value, string direction) => new()
     {

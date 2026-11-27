@@ -1,8 +1,11 @@
+// Identifica si la interfaz corre en el navegador, Android o Windows. Reúne las diferencias de llamadas y archivos de cada plataforma.
+
 import { registerPlugin } from "@capacitor/core";
 import { invoke } from "@tauri-apps/api/core";
 
 const platform = import.meta.env.VITE_KHYPU_NATIVE;
 export const isNative = platform === "android" || platform === "windows";
+// La versión instalada necesita el origen indicado al compilar. En web, las rutas relativas se resuelven con el mismo sitio que sirve la pantalla.
 export const apiOrigin = isNative ? String(import.meta.env.VITE_KHYPU_API_ORIGIN) : "";
 export const apiUrl = (path: string) => apiOrigin + path;
 export const clientId = "khypupyme2-" + platform;
@@ -26,6 +29,7 @@ const android = registerPlugin<{
   saveFile(input: { name: string; content: string }): Promise<void>;
 }>("PilotBridge");
 
+// Agrupa las llamadas al adaptador nativo para abrir el navegador y recuperar o conservar datos de sesión.
 export const bridge = {
   start: (url: string) => platform === "android" ? android.start({ url }) : invoke<void>("native_start", { url }),
   callback: async () => platform === "android" ? (await android.callback()).value : invoke<string | null>("native_callback"),
@@ -34,6 +38,7 @@ export const bridge = {
   clear: (name: Secret) => platform === "android" ? android.clear({ name }) : invoke<void>("native_clear", { name }),
 };
 
+// Usa la forma de guardar que ofrece cada plataforma. El contenido del archivo ya fue preparado por el código que llama a esta función.
 export async function downloadFile(blob: Blob, name: string) {
   if (!isNative) {
     const url = URL.createObjectURL(blob);

@@ -1,6 +1,8 @@
 using System.Numerics;
 using KhypuPyme.Api.Commerce;
 
+// Se usan enteros escalados para representar las medidas y conservar la precisión del cálculo.
+// El precio por pie tablar se calcula en el servidor con las dimensiones reales de cada línea.
 namespace KhypuPyme.Api.Timber;
 
 // Micrómetros escalados a milésimas: 1 mm = 1.000.000. El volumen nunca pasa por punto flotante.
@@ -25,6 +27,7 @@ internal static class TimberMeasures
     private const long Maximum = 10_000_000_000;
     private static readonly BigInteger BoardFoot = 2_359_737_216L * BigInteger.Pow(10, 15);
 
+    // Aplica los límites del largo, ancho y espesor. Así los cálculos de precio e inventario usan medidas admitidas.
     public static void Validate(TimberDimensions dimensions)
     {
         if (dimensions.LengthMicros < Foot || dimensions.LengthMicros > 20 * Foot || dimensions.LengthMicros % Foot != 0)
@@ -33,6 +36,7 @@ internal static class TimberMeasures
             throw new CommerceFailure("El espesor y el ancho deben ser positivos y de hasta 10.000 mm.");
     }
 
+    // El largo determina la categoría supercorta, corta o larga y la tarifa asociada a esa especie.
     public static long Rate(Product product, TimberDimensions dimensions) => (dimensions.LengthMicros / Foot) switch
     {
         <= 2 => product.SuperShortMinor!.Value,
@@ -40,9 +44,11 @@ internal static class TimberMeasures
         _ => product.LongMinor!.Value,
     };
 
+    // Multiplica dimensiones y piezas en un tipo entero grande. Un volumen puede exceder el rango de long.
     public static BigInteger Volume(TimberDimensions dimensions, int quantity) =>
         (BigInteger)dimensions.LengthMicros * dimensions.ThicknessMicros * dimensions.WidthMicros * quantity;
 
+    // Convierte el volumen a pies tablares, aplica la tarifa y redondea el importe final a centavos.
     public static long Total(BigInteger volume, long rate)
     {
         var numerator = volume * rate;

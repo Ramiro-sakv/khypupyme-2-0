@@ -6,6 +6,8 @@ using KhypuPyme.Api.Commerce;
 using KhypuPyme.Api.Persistence;
 using Microsoft.EntityFrameworkCore;
 
+// El tutorial de madera opera en un negocio de práctica ligado al negocio habitual.
+// La separación permite hacer compras y ventas ficticias con los mismos formularios.
 namespace KhypuPyme.Api.Timber;
 
 internal sealed class TimberPractice
@@ -29,6 +31,7 @@ internal static class PracticeSteps
     public const int Reports = 5;
     public const int Done = 7;
 
+    // La práctica solo avanza con la operación esperada. El avance se guarda con ese movimiento para evitar estados incongruentes.
     public static void Advance(TimberPractice practice, CommerceTransaction work)
     {
         var command = work.Command;
@@ -59,6 +62,7 @@ internal sealed class TimberPracticeService(KhypuPymeDbContext db, BusinessAcces
         return await StatusAsync(owner, practice, ct);
     }
 
+    // Inicia, pausa, reanuda o limpia la práctica según su estado. El negocio habitual y el espacio de práctica conservan identificadores separados.
     public async Task<PracticeStatus> ChangeAsync(Guid owner, Guid origin, PracticeInput request, CancellationToken ct)
     {
         var now = clock.GetUtcNow();

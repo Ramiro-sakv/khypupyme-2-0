@@ -1,10 +1,12 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics;
 
+// Este manejador transforma errores inesperados en una respuesta que el usuario puede reportar.
 namespace KhypuPyme.Api.Hosting;
 
 internal sealed class SafeErrors(ILogger<SafeErrors> logger) : IExceptionHandler
 {
+    // Entrega una referencia para buscar el incidente en los registros del servidor sin mostrar detalles internos en la pantalla.
     public async ValueTask<bool> TryHandleAsync(HttpContext http, Exception error, CancellationToken ct)
     {
         var bad = error is BadHttpRequestException or JsonException;

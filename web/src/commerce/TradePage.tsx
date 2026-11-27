@@ -1,3 +1,5 @@
+// Pantalla compartida por compras, ventas, cotizaciones y entradas manuales. Organiza la captura, el cálculo del carrito y el envío al servidor.
+
 import { useEffect, useRef, useState } from "react";
 import { get } from "../api/client";
 import { Alert, Button, Card, DataTable, EmptyState, TextField } from "../ui/Primitives";
@@ -39,6 +41,7 @@ type TradeDraft = {
   lines: Line[]; customer?: { id: string; name: string }; discount: string; note: string; method: string; quote?: string;
   containers?: ContainerDraft;
 };
+// Estos valores son el punto de partida de un carrito nuevo. Si ya existe un borrador para ese contexto, useDraft restaura sus datos.
 function blankDraft(method = "cash"): TradeDraft { return { lines: [], discount: "0", method, note: "" }; }
 const emptyTile: TileRequest = { area: null, waste: null, tone: null, caliber: null };
 const titles: Record<TradeKind, string> = { sale: "Venta nueva", purchase: "Compra nueva", quote: "Cotización nueva", "stock-in": "Entrada manual de inventario" };
@@ -53,8 +56,10 @@ export function TradePage({ kind, proposal, dismissProposal, onHistory, units = 
   policy?: OperatingPolicy;
   setShowHistory?: (visible: boolean) => void;
 }) {
+  // El espacio de trabajo identifica la cuenta, el negocio y la ruta de su API.
   const workspace = useCommerce();
   const initialDraft = blankDraft(policy?.defaultPayment);
+  // La clave separa cada borrador por negocio, tipo de operación y trabajo vinculado.
   const draftKey = workspace.scope + ":" + kind + (work ? ":work:" + work.id : "");
   const { value, update: saveDraft, ready, error, flush, reload } = useDraft(draftKey, work ? { ...initialDraft, note: work.title,
     lines: workService ? [{ id: workService.id, name: workService.name, quantity: "1", priceMinor: workService.priceMinor, cost: "" }] : [] } : initialDraft);
@@ -64,23 +69,30 @@ export function TradePage({ kind, proposal, dismissProposal, onHistory, units = 
   const [vehicle, setVehicle] = useState(emptyVehicle);
   const [acknowledged, setAcknowledged] = useState("");
   const [stockVersion, setStockVersion] = useState(0);
+
+  // Todos los cambios pasan por esta función para guardar el borrador y mantener la revisión ligada a lo que se va a enviar.
   function update(produce: (draft: TradeDraft) => TradeDraft) {
+    // Si cambia la operación, la persona tiene que revisar otra vez el importe.
     setAcknowledged("");
     saveDraft((draft) => {
       const next = produce(draft);
+      // Una edición de las líneas invalida la comprobación de sus existencias.
       if (next.lines !== draft.lines) setStockVersion((version) => version + 1);
       return next;
     });
   }
+
   const cart = useRef<HTMLHeadingElement>(null);
   const stockIn = kind === "stock-in";
   const isPurchase = kind === "purchase" || stockIn;
   const products = useCommerceData<Page<Product>>("/products?" + new URLSearchParams({ active: "true", search, page: String(page),
     ...(isPurchase ? { service: "false" } : {}),
     ...(industry === "spareParts" ? vehicleQuery(vehicle) : {}) }));
+  // Pide en un solo lote las fichas vigentes de todos los productos del borrador.
   const current = useCurrentProducts([...new Set(value.lines.map((line) => line.id))].join(","));
   const form = useCommercialForm();
   const confirmation = workspace.confirmation;
+  // Mientras se envía o queda pendiente el comando de este borrador, la interfaz protege la captura original para poder consultar ese mismo intento.
   const frozen = form.processing || workspace.pending?.draft?.key === draftKey;
   const quote = kind === "quote";
   const mixed = industry === "beverages";
@@ -93,9 +105,12 @@ export function TradePage({ kind, proposal, dismissProposal, onHistory, units = 
     if (confirmation?.draft?.key === draftKey) void reload();
   }, [confirmation, draftKey, reload]);
 
+  // Los importes preparados para la API van en centavos de boliviano.
   const discount = isPurchase ? 0 : parseMoney(value.discount);
+  // En madera, cada grupo puede producir varias líneas, una por medida capturada.
   const timberLines = value.lines.flatMap((line) => line.timber ? [{ ...line, timber: line.timber }] : []);
   const timber = prepareTimber(timberLines, current.data, isPurchase);
+  // Transforma lo escrito en datos comerciales. Una línea puede venir de piezas, dimensiones, una lista de series o caras de impresión.
   const lines = value.lines.filter((line) => !line.timber).map((line) => {
     const product = current.data?.[line.id];
     const serials = line.series === undefined ? undefined : seriesFromText(line.series);
@@ -124,6 +139,7 @@ export function TradePage({ kind, proposal, dismissProposal, onHistory, units = 
       changed: !isPurchase && product !== undefined && product.priceMinor !== line.priceMinor,
     };
   });
+  // La vista previa necesita identificar la cantidad, la medida, el lote o la serie.
   const stockLines: StockLine[] = [
     ...(!isPurchase ? timber.commands.map(({ productId, quantity, timber }) => ({ productId, quantity, timber })) : []),
     ...lines.flatMap(({ line, product, serials, measure, quantity, requested, tileRequest, tileIncomplete }): StockLine[] =>
@@ -132,7 +148,10 @@ export function TradePage({ kind, proposal, dismissProposal, onHistory, units = 
         ? [{ productId: line.id, quantity: measure ? 1 : quantity, measure, serials, tile: tileRequest }] : []),
   ];
   const stockCheck = useStockCheck(stockLines, isPurchase, quote, stockVersion);
+
+  // Una línea queda bloqueada si faltan unidades o la API informa otro impedimento.
   const failedChecks = stockCheck.checks?.filter((row) => row.requested > row.available || !!row.reason) ?? [];
+  // Una comprobación pendiente también impide confirmar la venta.
   const stockBlocked = (stockLines.length > 0 && !stockCheck.checks) || failedChecks.length > 0;
   const stockByMeasure = new Map(stockCheck.checks?.flatMap((row) => row.timber
     ? [[stockKey(row.productId, row.timber), row.available] as const] : []));
@@ -142,16 +161,26 @@ export function TradePage({ kind, proposal, dismissProposal, onHistory, units = 
   const invalidSeries = scopedSeries.length > 100 || new Set(scopedSeries).size !== scopedSeries.length;
   const lotKeys = lines.flatMap((row) => row.measure?.lot ? [row.line.id + ":" + row.measure.lot.toUpperCase()] : []);
   const duplicateLots = isPurchase && new Set(lotKeys).size !== lotKeys.length;
+  // Suma las líneas normales a los subtotales de madera.
   const gross = lines.reduce((sum, item) => sum + (item.subtotal ?? 0), timber.gross);
   const distinctGroups = new Set(timber.commands.map((row) => [row.productId, row.timber.lengthMicros, row.timber.thicknessMicros].join(":")));
   const commercialGroups = new Set(lines.map((row) => row.line.id)).size + distinctGroups.size;
   const limitReached = commercialGroups > 20 || timber.commands.length + lines.length > 100;
-  const total = value.lines.length > 0 && lines.every((item) => item.subtotal !== null) && timber.groups.every((group) => group.total !== null) &&
+  // null significa que el importe sigue pendiente de completar o corregir.
+  const total = value.lines.length > 0 &&
+    lines.every((item) => item.subtotal !== null) &&
+    timber.groups.every((group) => group.total !== null) &&
     !limitReached && !timber.problem && !invalidSeries && !duplicateLots &&
-    gross <= moneyLimit && discount !== null && discount <= gross ? gross - discount : null;
+    gross <= moneyLimit && discount !== null && discount <= gross
+      ? gross - discount
+      : null;
+
+  // Las cotizaciones pueden guardarse aunque la comprobación de stock dé un aviso.
   const unavailable = !current.data || lines.some(({ product, changed }) => !product?.active || changed) ||
     timberLines.some((line) => !current.data?.[line.id]?.active || !current.data[line.id].timber) ||
     ((kind === "sale" || isPurchase) && stockBlocked);
+
+  // Una venta que nace de un trabajo conserva su cliente. En el resto de operaciones se usa la selección del carrito.
   const customerId = work?.customerId ?? value.customer?.id;
   const payingOnCredit = kind === "sale" && value.method === "credit";
   const creditAllowed = policy?.allowNewCredit ?? true;
@@ -160,11 +189,18 @@ export function TradePage({ kind, proposal, dismissProposal, onHistory, units = 
   const maxDiscount = policy?.maxDiscountPercent ?? 100;
   const discountBlocked = !value.quote && discount !== null && discount * 100 > gross * maxDiscount;
   const missingService = !!work?.serviceId && !value.lines.some((line) => line.id === work.serviceId && line.quantity === "1");
-  const reviewKey = JSON.stringify([value.lines, value.discount, value.method, customerId, value.quote, total, timber.commands, value.containers, work?.revision]);
-  const canSend = total !== null && !unavailable && !requiresCustomer && !creditBlocked && !discountBlocked && !missingService && !error && !containers.error &&
+  // La casilla de revisión queda ligada a los datos concretos que se van a enviar.
+  const reviewKey = JSON.stringify([
+    value.lines, value.discount, value.method, customerId, value.quote, total,
+    timber.commands, value.containers, work?.revision
+  ]);
+  // Habilitar Confirmar exige importes completos, catálogos y stock vigentes cuando corresponde, reglas del negocio y revisión del importe actual.
+  const canSend = total !== null && !unavailable && !requiresCustomer && !creditBlocked &&
+    !discountBlocked && !missingService && !error && !containers.error &&
     (!stockIn || !!value.note.trim()) && acknowledged === reviewKey;
   const totalText = total === null ? "Pendiente" : bob(total);
 
+  // Crea la captura que corresponde a la ficha elegida. Un producto de madera necesita medidas distintas a las de una unidad que se sigue por serie.
   function add(product: Product, newLot = false) {
     if (isPurchase && (product.isService || product.specialty?.material?.cement?.isBulk)) return;
     update((currentDraft) => {
@@ -193,6 +229,7 @@ export function TradePage({ kind, proposal, dismissProposal, onHistory, units = 
     });
   }
 
+  // Localiza una línea por su identificador de carrito para cambiar sus campos sin reemplazar las demás líneas.
   function edit(id: string, fields: Partial<Line>) {
     update((draft) => ({ ...draft, lines: draft.lines.map((line) => (line.key ?? line.id) === id ? { ...line, ...fields } : line) }));
   }
@@ -409,15 +446,34 @@ export function TradePage({ kind, proposal, dismissProposal, onHistory, units = 
       {work ? <p>Cliente del trabajo · <strong>{work.customerName}</strong></p> : !isPurchase && <Buyer selected={value.customer} disabled={frozen}
         onChange={(customer) => update((draft) => ({ ...draft, customer }))} />}
       <form className="account-form" onSubmit={(event) => {
+        // React maneja el formulario para conservar la pantalla y el borrador.
         event.preventDefault();
         if (!canSend) return;
+
+        // Prepara el comando. El servidor vuelve a validar las líneas y sus importes.
+        // flush guarda el borrador antes del envío. El resultado confirmado abre el comprobante.
         void form.submit(() => ({
-          kind, method: quote || stockIn ? undefined : value.method,
-          customerId: isPurchase ? undefined : customerId, workLink: work ? { id: work.id, revision: work.revision } : undefined,
-          discountMinor: discount ?? undefined, sourceId: value.quote, note: value.note,
+          kind,
+          method: quote || stockIn ? undefined : value.method,
+          customerId: isPurchase ? undefined : customerId,
+          workLink: work ? { id: work.id, revision: work.revision } : undefined,
+          discountMinor: discount ?? undefined,
+          sourceId: value.quote,
+          note: value.note,
           containers: containers.moves.length ? containers.moves : undefined,
-          lines: [...lines.map(({ line, quantity, unitMinor, measure, serials, printing, tileRequest }): CommandLine =>
-            ({ productId: line.id, quantity: measure || printing ? 1 : quantity, unitMinor, measure, serials, printing: printing?.job, tile: tileRequest })), ...timber.commands],
+          lines: [
+            ...lines.map(({ line, quantity, unitMinor, measure, serials, printing, tileRequest }): CommandLine => ({
+              productId: line.id,
+              // La cantidad detallada de estos rubros viaja en measure o printing.
+              quantity: measure || printing ? 1 : quantity,
+              unitMinor,
+              measure,
+              serials,
+              printing: printing?.job,
+              tile: tileRequest
+            })),
+            ...timber.commands
+          ],
         }), (result) => workspace.showDocument(result.entityId), flush);
       }}>
         {withContainers && <details className="buyer"><summary>Envases entregados y devueltos</summary>
@@ -473,6 +529,7 @@ export function TradePage({ kind, proposal, dismissProposal, onHistory, units = 
   </div>;
 }
 
+// Permite elegir cliente durante la revisión, de modo que se pueda volver al carrito con el cliente elegido y la captura intacta.
 function Buyer({ selected, disabled, onChange }: {
   selected?: TradeDraft["customer"]; disabled: boolean; onChange: (customer: TradeDraft["customer"]) => void;
 }) {
@@ -500,6 +557,7 @@ function Buyer({ selected, disabled, onChange }: {
   </div>;
 }
 
+// Consulta los datos actuales en bloque. Una ficha archivada o un precio actualizado pueden cambiar lo que una operación permite enviar.
 function useCurrentProducts(ids: string) {
   const { path, revision } = useCommerce();
   const [refresh, setRefresh] = useState(0);

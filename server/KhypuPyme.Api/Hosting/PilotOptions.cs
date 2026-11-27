@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Npgsql;
 
+// Aquí se validan los ajustes del perfil de piloto descrito por la aplicación.
+// El perfil de trabajo habitual usa su propia configuración de ejecución.
 namespace KhypuPyme.Api.Hosting;
 
 internal sealed class PilotOptions(IConfiguration config, IWebHostEnvironment environment)
@@ -16,6 +18,7 @@ internal sealed class PilotOptions(IConfiguration config, IWebHostEnvironment en
     public Uri Origin { get; } = ParseOrigin(config["Pilot:Origin"] ?? config["RENDER_EXTERNAL_URL"], config.GetValue<bool>("Pilot:Enabled"));
     public bool Allows(string? email) => !Enabled || email is not null && emails.Contains(email);
 
+    // Carga el certificado que protege las claves del perfil y valida los ajustes indispensables antes de aceptar solicitudes.
     public X509Certificate2 LoadCertificate()
     {
         if (emails.Count == 0 || string.IsNullOrWhiteSpace(config["Mail:Token"]) || string.IsNullOrWhiteSpace(config["Mail:From"]))
@@ -28,6 +31,7 @@ internal sealed class PilotOptions(IConfiguration config, IWebHostEnvironment en
         return X509CertificateLoader.LoadPkcs12(Convert.FromBase64String(encoded), password, X509KeyStorageFlags.EphemeralKeySet);
     }
 
+    // Comprueba la base del piloto y su conexión TLS. Distingue el rol de ejecución del usuario que aplica migraciones.
     public static void RequireDatabase(string? value, bool application)
     {
         const string appRole = "khypupyme2_pilot_app";
@@ -41,6 +45,7 @@ internal sealed class PilotOptions(IConfiguration config, IWebHostEnvironment en
                 : "Para migrar el piloto usa la conexión del propietario de la base.");
     }
 
+    // Valida el origen HTTPS para que el perfil tenga una sola dirección de referencia.
     private static Uri ParseOrigin(string? value, bool enabled)
     {
         if (!enabled) return new Uri("https://localhost");
@@ -55,6 +60,7 @@ internal sealed class PilotInvite : IAuthorizationRequirement;
 
 internal sealed class PilotInviteHandler(PilotOptions pilot, UserManager<IdentityUser<Guid>> users) : AuthorizationHandler<PilotInvite>
 {
+    // Si el perfil se activa, exige que la cuenta esté confirmada y que su correo figure entre los invitados.
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, PilotInvite requirement)
     {
         if (!pilot.Enabled) { context.Succeed(requirement); return; }

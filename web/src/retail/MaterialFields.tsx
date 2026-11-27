@@ -1,3 +1,5 @@
+// Contiene la captura de datos de muebles, cerámica y cemento. La pantalla de cerámicas también calcula la cobertura que necesita la venta.
+
 import type { components } from "../api/schema";
 import type { Product } from "../commerce/models";
 import { editableMoney, parseMoney } from "../commerce/models";
@@ -18,6 +20,7 @@ export function initialMaterials(product?: Product): Fields {
     bulkPrice: material?.cement?.bulkPriceMinor == null ? "" : editableMoney(material.cement.bulkPriceMinor) };
 }
 
+// Incluye detalles de materiales de acuerdo con el rubro y el tipo de ficha. Así los campos ajenos a la ficha no se envían en el comando.
 export function materialCommand(industry: string | undefined, kind: string, fields: Fields) {
   const price = fields.bulk ? parseMoney(fields.bulkPrice) : null;
   if (kind === "cement" && fields.bulk && price === null) throw new Error("Indica el precio de venta por kg.");
@@ -67,6 +70,7 @@ function scaled(value: string) {
   return match ? BigInt(match[1]) * 1000n + BigInt((match[2] ?? "").padEnd(3, "0")) : null;
 }
 
+// Parte del área y la merma. Redondea hacia arriba la cantidad de la presentación elegida para que alcance la cobertura prevista.
 export function tilePreview(profile: Schema["TileProfile"], request: TileRequest, unit: string, boxSize: number) {
   if (!request.area?.trim()) return null;
   const area = scaled(request.area);
@@ -80,6 +84,7 @@ export function tilePreview(profile: Schema["TileProfile"], request: TileRequest
   return { quantity, required: Number(required) / 100_000_000 };
 }
 
+// Reúne área, merma y características de la partida para que el usuario pueda revisar la cobertura y la cantidad a vender.
 export function TileFields({ profile, request, unit, boxSize, pieces, disabled, update }: {
   profile: Schema["TileProfile"]; request: TileRequest; unit: string; boxSize: number; pieces: number;
   disabled: boolean; update: (request: TileRequest) => void;

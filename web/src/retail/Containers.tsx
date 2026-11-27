@@ -1,3 +1,5 @@
+// Controla cantidades de envases prestados y devueltos por cliente, desde la venta o como movimiento de envases.
+
 import { useState } from "react";
 import type { components } from "../api/schema";
 import { useCommerce, useCommerceData } from "../commerce/CommerceContext";
@@ -12,11 +14,13 @@ type ContainerObligation = Schema["ContainerObligation"];
 export type ContainerDraft = Record<string, { delivered: string; returned: string }>;
 const empty = { delivered: "", returned: "" };
 
+// Consulta balances según el cliente seleccionado cuando el flujo lo requiere. Se usa su saldo registrado como punto de partida.
 export function useContainerBalances(enabled: boolean, customer?: string) {
   return useCommerceData<ContainerInfo[]>(enabled ? "/containers" +
     (customer ? "?" + new URLSearchParams({ customer }) : "") : null);
 }
 
+// Transforma la captura en cantidades enteras. Advierte si se quieren devolver más envases de los que correspondían al saldo previo.
 export function prepareContainerMoves(draft: ContainerDraft, rows: ContainerInfo[] | undefined, customer?: string) {
   const moves: ContainerInput[] = [];
   for (const [typeId, amount] of Object.entries(draft)) {
@@ -38,6 +42,7 @@ export function prepareContainerMoves(draft: ContainerDraft, rows: ContainerInfo
   return { moves, error: moves.length > 20 ? "Divide el registro en hasta 20 tipos de envases." : "" };
 }
 
+// Permite capturar entregas y devoluciones por cada tipo de envase, manteniendo las cantidades ligadas al cliente de la operación.
 export function ContainerFields({ balances, draft, update, disabled, customer }: {
   balances: ReturnType<typeof useContainerBalances>; draft: ContainerDraft; update: (value: ContainerDraft) => void;
   disabled: boolean; customer?: string;

@@ -1,3 +1,5 @@
+// Reúne ingreso, registro y recuperación. Cada modo pide los datos que necesita y envía la solicitud correspondiente a la API.
+
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { change } from "../api/client";
@@ -25,6 +27,7 @@ export function AuthPage({ google, localMailbox, returnTo, notice, onSignIn }: {
   const [feedback, setFeedback] = useState(notice);
   const verified = sentTo !== "" && sentTo === email.trim();
 
+  // Agrupa el estado de espera y los mensajes de error, de modo que todas las acciones del formulario reaccionen del mismo modo.
   async function run(action: () => Promise<void>) {
     setError("");
     setFeedback("");
@@ -34,6 +37,7 @@ export function AuthPage({ google, localMailbox, returnTo, notice, onSignIn }: {
     finally { setBusy(false); }
   }
 
+  // Al cambiar de tarea se restablecen datos y mensajes del modo anterior para que un código o aviso quede en el formulario correcto.
   function open(next: Mode) {
     setMode(next);
     setPassword("");
@@ -44,6 +48,7 @@ export function AuthPage({ google, localMailbox, returnTo, notice, onSignIn }: {
     setFeedback("");
   }
 
+  // El envío tiene distintos pasos según el modo. La API comprueba credenciales o códigos y decide si la cuenta puede ingresar.
   async function submit(event: FormEvent) {
     event.preventDefault();
     await run(async () => {
@@ -64,6 +69,7 @@ export function AuthPage({ google, localMailbox, returnTo, notice, onSignIn }: {
     });
   }
 
+  // Pedir el código y usarlo son acciones separadas. El servidor emite el código antes de que el usuario lo ingrese.
   async function sendCode() {
     await change(auth + "/" + mode + "/code", "POST", { email });
     setSentTo(email.trim());

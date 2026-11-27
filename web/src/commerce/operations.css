@@ -1,3 +1,5 @@
+/* Ajusta la distribución de las pantallas operativas, como Almacén, el carrito y las sesiones de Caja. */
+
 
 .operation-hero {
   --module-tint: #e6ebd9;
@@ -36,6 +38,7 @@
 .trade-controls { display: flex; flex-wrap: wrap; gap: .55rem; }
 .trade-controls .ui-button[aria-pressed="true"] { background: var(--accent); color: white; border-color: var(--accent); }
 .trade-pane[hidden] { display: none; }
+/* Permite que las dos áreas se ajusten a su espacio. Los nombres largos del catálogo pueden partirse antes de ensanchar toda la cuadrícula. */
 .trade-catalog, .trade-cart { min-width: 0; }
 .trade-catalog .trade-catalog-heading { margin: 0; }
 .trade-catalog .commerce-search { margin-block: .8rem; }
@@ -100,6 +103,8 @@
 .inventory-drawer-content .ui-card { min-width: 0; }
 .inventory-drawer-content .commerce-editor { max-width: none; }
 
+
+/* En pantallas amplias, separa el estado de Caja de sus acciones. */
 .cash-workbench { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 1rem; }
 .cash-status-panel { display: grid; gap: .85rem; }
 .cash-status-panel p { margin: 0; }
@@ -109,6 +114,7 @@
 .cash-metrics dt { font-size: .82rem; color: var(--muted); }
 .cash-metrics dd { margin: .25rem 0 0; font-size: clamp(.84rem, .79rem + .25vw, 1rem); color: var(--ink); font-weight: var(--weight-emphasis); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .cash-metrics div:first-child dd { color: var(--accent); font-size: clamp(.95rem, .87rem + .4vw, 1.2rem); }
+/* Protege los textos de Estado y los importes para conservarlos juntos aun si se necesita desplazar la tabla. */
 .cash-sessions .ui-table :is(th, td):nth-child(2), .cash-sessions .ui-table :is(th, td):nth-child(3) {
   white-space: nowrap;
 }

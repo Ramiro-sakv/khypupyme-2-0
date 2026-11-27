@@ -3,10 +3,12 @@ using KhypuPyme.Api.Businesses;
 using KhypuPyme.Api.Commerce;
 using Microsoft.AspNetCore.Identity;
 
+// La pantalla de configuración usa estas rutas para acreditar la identidad, pedir códigos y gestionar bajas y cierres de sesión.
 namespace KhypuPyme.Api.Security;
 
 internal static class SecurityEndpoints
 {
+    // Agrupa los controles sensibles bajo rutas de cuenta y negocio. La sesión indica quién está autorizado a pedirlos.
     public static void MapSecurity(this WebApplication app)
     {
         var group = app.MapGroup("/api/v1/security").RequireAuthorization("Account").WithTags("Seguridad");
@@ -41,6 +43,7 @@ internal static class SecurityEndpoints
             SignInManager<IdentityUser<Guid>> signIn, CancellationToken ct) => EndAccountAsync(input, http, actions, signIn, true, ct));
     }
 
+    // Traduce la solicitud de la pantalla en revocación de sesiones o solicitud de baja, según la acción recibida.
     private static async Task<IResult> EndAccountAsync(IdentityConfirmation input, HttpContext http, AccountActions actions,
         SignInManager<IdentityUser<Guid>> signIn, bool closure, CancellationToken ct)
     {

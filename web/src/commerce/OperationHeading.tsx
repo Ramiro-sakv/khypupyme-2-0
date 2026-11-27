@@ -1,3 +1,4 @@
+// Define la cabecera compartida de las áreas operativas. Reúne imagen, descripción y accesos de la pantalla donde se usa.
 
 import type { ReactNode } from "react";
 import { Icon } from "../ui/Icon";

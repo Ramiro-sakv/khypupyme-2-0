@@ -3,12 +3,14 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+// Introduce consecutivos de producto y cliente para madera, tienda, ropa y electrodomésticos.
 namespace KhypuPyme.Api.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class FourPrimaryIndustries : Migration
     {
         /// <inheritdoc />
+        // Asigna códigos a clientes existentes de los cuatro rubros e inicia los contadores de producto a partir de códigos ya usados. Se mantienen los identificadores existentes.
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
@@ -78,6 +80,7 @@ namespace KhypuPyme.Api.Persistence.Migrations
         }
 
         /// <inheritdoc />
+        // Quita la columna y la tabla añadidas para la codificación automática.
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(

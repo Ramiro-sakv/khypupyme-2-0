@@ -10,14 +10,18 @@ using KhypuPyme.Api.Security;
 using Microsoft.EntityFrameworkCore;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Recibe los comandos comerciales, verifica el contexto del negocio y elige qué operación se ejecuta. Guarda la operación y su recibo juntos.
 namespace KhypuPyme.Api.Commerce;
 
 internal sealed class CommerceService(KhypuPymeDbContext db, BusinessAccess access, LicenseAccess license, SecurityProofs proofs, TimeProvider clock)
 {
     public async Task<CommandResult> ExecuteAsync(Guid accountId, Guid businessId, CommerceCommand command, bool practiceChannel, CancellationToken ct)
     {
+        // El identificador permite reconocer una solicitud repetida.
         if (command.OperationId == Guid.Empty || command.Kind is null or { Length: > 30 })
             throw new CommerceFailure("La solicitud comercial no es válida.");
+
+        // Cada tipo de operación admite solo los datos que necesita.
         if ((command.Kind == "configure-business") != (command.Policy is not null))
             throw new CommerceFailure("Las reglas de operación solo corresponden a la configuración del negocio.");
         if (command.Containers is not null && command.Kind is not ("sale" or "containers"))
@@ -37,29 +41,39 @@ internal sealed class CommerceService(KhypuPymeDbContext db, BusinessAccess acce
             (command.ServiceProduct is not null && command.Kind != "product"))
             throw new CommerceFailure("Los datos de la cita o servicio no corresponden a la operación.");
 
+        // Abre la transacción y establece en PostgreSQL la cuenta y el negocio de esta solicitud.
         await using var transaction = await access.OpenAsync(accountId, businessId, ct);
+        // La consulta distingue el negocio habitual de su espacio de práctica.
         var business = await db.Businesses.AsNoTracking().SingleOrDefaultAsync(x => x.Id == businessId &&
             (x.PracticeOriginId != null) == practiceChannel, ct)
             ?? throw new CommerceFailure("No se encontró el negocio.", 404);
 
-        // Orden fijo de bloqueos: identificador de cuenta, luego el negocio.
+        // Primero se bloquea la pareja cuenta + solicitud para detectar envíos duplicados.
         var requestKey = accountId.ToString("N") + command.OperationId.ToString("N");
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({requestKey}, 4))", ct);
+        // La huella identifica el contenido original asociado a ese identificador.
         var digest = Digest(command);
         var receipt = await db.Set<CommerceReceipt>().FindAsync([accountId, command.OperationId], ct);
         if (receipt is not null)
         {
+            // El mismo identificador debe conservar el negocio y los datos originales.
             if (receipt.BusinessId != businessId || receipt.Digest != digest)
                 throw new CommerceFailure("Ese identificador ya se utilizó con otra solicitud.", 409);
+            // Devuelve el resultado guardado si el cliente envió de nuevo la misma venta.
             return new CommandResult(receipt.Id, receipt.Kind, receipt.EntityId);
         }
 
+        // Este bloqueo dura hasta que termine la transacción. Si dos cajas venden la última pieza,
+        // la segunda espera y comprueba el saldo después de que se haya confirmado la primera.
         await access.LockBusinessAsync(businessId, ct);
         if (await access.ClosedAsync(accountId, ct))
             throw new CommerceFailure("La cuenta tiene una solicitud de eliminación.", 403);
         if (await access.DeletingAsync(business.PracticeOriginId ?? businessId, ct))
             throw new CommerceFailure("El negocio tiene una limpieza pendiente.", 409);
+
+        // Toda la operación comparte el mismo instante de referencia para evaluar la licencia y fechar los registros.
         var now = clock.GetUtcNow();
+        // El cierre de una Caja existente también se permite con la licencia vencida.
         if (command.Kind != "close-cash")
             await license.RequireAsync(accountId, business.PracticeOriginId ?? businessId, now, ct);
         var practice = practiceChannel
@@ -69,15 +83,19 @@ internal sealed class CommerceService(KhypuPymeDbContext db, BusinessAccess acce
             throw new CommerceFailure("Reanuda la práctica antes de registrar movimientos.", 409);
         if (practiceChannel && command.Kind is ("stock-in" or "cash-adjust" or "manual-debt" or "void-debt" or "configure-business"))
             throw new CommerceFailure("Ese ajuste manual no forma parte de esta práctica.", 403);
+        // Los módulos comerciales comparten el mismo contexto de escritura y transacción.
         var work = new CommerceTransaction(db, business, command, now, ct);
         SecurityProof? approval = null;
         object? previous = null;
         if (!practiceChannel && (CorrectionAudit.Protected(command) || await CorrectionAudit.CashDifferenceAsync(db, command, ct)))
         {
+            // Las correcciones protegidas consumen una aprobación ligada a esta solicitud.
             approval = await proofs.FindAsync(accountId, command.OperationId, "correction", businessId, digest, ct);
             proofs.Consume(approval);
             previous = await CorrectionAudit.BeforeAsync(work);
         }
+
+        // Delega según el tipo enviado por el cliente y conserva el ID del registro creado o afectado.
         var entityId = command.Kind switch
         {
             "configure-business" => await BusinessPolicy.UpdateAsync(work),
@@ -108,16 +126,26 @@ internal sealed class CommerceService(KhypuPymeDbContext db, BusinessAccess acce
 
         if (practice is not null) PracticeSteps.Advance(practice, work);
         if (approval is not null) CorrectionAudit.Record(work, accountId, entityId, approval.Reason, previous);
+
+        // Este registro permite consultar el resultado incluso si el cliente perdió la respuesta.
         db.Add(new CommerceReceipt
         {
-            Id = command.OperationId, AccountId = accountId, BusinessId = businessId,
-            Digest = digest, Kind = command.Kind, EntityId = entityId,
+            Id = command.OperationId,
+            AccountId = accountId,
+            BusinessId = businessId,
+            Digest = digest,
+            Kind = command.Kind,
+            EntityId = entityId,
         });
+
+        // SaveChangesAsync envía a PostgreSQL los cambios de existencias, Caja, comprobante y recibo.
         await db.SaveChangesAsync(ct);
+        // CommitAsync confirma todos esos cambios juntos. Si algo falla antes de confirmar, se revierte la transacción.
         await transaction.CommitAsync(ct);
         return new CommandResult(command.OperationId, command.Kind, entityId);
     }
 
+    // Resume el contenido de la solicitud en una huella. Sirve para detectar si alguien vuelve a usar el mismo identificador con otro contenido.
     internal static string Digest(CommerceCommand command)
     {
         // Los contratos anteriores mantienen sus huellas, incluso cuando se agregan campos opcionales.
@@ -205,6 +233,7 @@ internal sealed class CommerceService(KhypuPymeDbContext db, BusinessAccess acce
         };
     }
 
+    // Agrupa el alta de variantes del modelo en la operación actual. Cada ficha conserva sus datos propios de talla, color y código.
     private static async Task<Guid> SaveVariantsAsync(CommerceTransaction work)
     {
         var input = work.Command;
@@ -224,6 +253,7 @@ internal sealed class CommerceService(KhypuPymeDbContext db, BusinessAccess acce
         return variants[0].Id;
     }
 
+    // Valida la ficha del producto y el código antes de guardar. Cuando el rubro lo admite, solicita un código automático si falta.
     private static async Task<Guid> SaveProductAsync(CommerceTransaction work)
     {
         var input = work.Command;
@@ -266,6 +296,7 @@ internal sealed class CommerceService(KhypuPymeDbContext db, BusinessAccess acce
         return product.Id;
     }
 
+    // Crea o actualiza la ficha que luego se puede asociar a una venta o un fiado. Un cliente nuevo puede recibir su propio código.
     private static async Task<Guid> SaveCustomerAsync(CommerceTransaction work)
     {
         var input = work.Command;
@@ -283,69 +314,5 @@ internal sealed class CommerceService(KhypuPymeDbContext db, BusinessAccess acce
         var customer = new Customer { BusinessId = work.Business.Id, Id = input.OperationId, Name = name, Phone = phone, Code = code };
         work.Db.Add(customer);
         return customer.Id;
-    }
-}
-
-internal sealed class CommerceTransaction(KhypuPymeDbContext db, Business business,
-    CommerceCommand command, DateTimeOffset now, CancellationToken ct)
-{
-    public KhypuPymeDbContext Db => db;
-    public Business Business => business;
-    public CommerceCommand Command => command;
-    public DateTimeOffset Now => now;
-    public DateOnly Today => LocalDate(now);
-    public CancellationToken Ct => ct;
-
-    public async Task<BusinessSettings> SettingsAsync() =>
-        await db.BusinessSettings.FindAsync([business.Id], ct)
-        ?? throw new CommerceFailure("No se encontró la configuración del negocio.", 409);
-
-    public async Task<Product> ProductAsync(Guid id) =>
-        await db.Set<Product>().FindAsync([business.Id, id], ct)
-        ?? throw new CommerceFailure("El producto no está disponible en este negocio.", 404);
-
-    public async Task<Customer> CustomerAsync(Guid id) =>
-        await db.Set<Customer>().FindAsync([business.Id, id], ct)
-        ?? throw new CommerceFailure("El cliente no está disponible en este negocio.", 404);
-
-    public async Task<Entry> SourceAsync(string kind, bool includeLines = false, bool allowExchange = false, bool allowManualDebt = false)
-    {
-        var query = db.Set<Entry>().Where(x => x.Id == command.SourceId &&
-            (x.Kind == kind || allowExchange && x.Kind == "exchange" || allowManualDebt && x.Kind == "manual-debt"));
-        if (includeLines) query = query.Include(x => x.Lines);
-        return await query.SingleOrDefaultAsync(ct)
-            ?? throw new CommerceFailure("La operación de origen no está disponible en este negocio.", 404);
-    }
-
-    public async Task<Entry> NewEntryAsync(string prefix)
-    {
-        var sequence = (await db.Set<Entry>().MaxAsync(x => (long?)x.Sequence, ct) ?? 0) + 1;
-        var entry = new Entry
-        {
-            BusinessId = business.Id, BusinessName = business.Name,
-            Id = command.OperationId, Kind = command.Kind, Sequence = sequence,
-            Number = $"{prefix}-{Today.Year}-{sequence:D6}", Date = Today, CreatedAt = now,
-            Practice = business.PracticeOriginId is not null,
-            Note = Text(command.Note, 240, "la referencia"),
-            TimberUnits = business.Industry == "timber"
-                ? (await SettingsAsync()).TimberUnits
-                : null,
-        };
-        db.Add(entry);
-        return entry;
-    }
-
-    public Task<CashSession?> OpenCashAsync() => db.Set<CashSession>().SingleOrDefaultAsync(x => x.ClosedAt == null, ct);
-
-    public async Task ApplyCashAsync(Entry entry, long delta)
-    {
-        if (entry.Method != "cash") return;
-        var session = await OpenCashAsync() ?? throw new CommerceFailure("Abre una caja para registrar efectivo.", 409);
-        var balance = session.ExpectedMinor + delta;
-        if (balance < 0)
-            throw new CommerceFailure("El saldo de caja no alcanza para este pago en efectivo.", 409);
-        session.ExpectedMinor = Money(balance, "un saldo de caja");
-        entry.CashSessionId = session.Id;
-        entry.CashDeltaMinor = delta;
     }
 }

@@ -1,3 +1,5 @@
+// Inicia un cambio de talla o color desde la venta original. Reúne devolución y reemplazo para revisar su diferencia de dinero.
+
 import { useRef, useState } from "react";
 import { Alert, Button, Card, SelectField, TextField } from "../ui/Primitives";
 import { ReviewDock } from "../ui/ReviewDock";
@@ -26,12 +28,14 @@ export function ExchangeEditor({ document, close }: { document: EntryDocument; c
   const count = Number(quantity);
   const valid = !!original && Number.isInteger(count) && count > 0 && count <= remainingQuantity(original);
   const byPair = original?.details?.specialty?.countUnit === "pair";
+  // Consulta la disponibilidad para las unidades del reemplazo que se eligió. Cambiar la variante o cantidad obliga a revisar el saldo otra vez.
   const stock = useStockCheck(valid && replacement ? [{ productId: replacement.id, quantity: count }] : [], false, false, version);
   const replacementStock = stock.checks?.[0];
   if (!original?.details?.apparel) return null;
   const refund = valid ? portion(original.subtotalMinor, original.returnedQuantity, count, original.quantity) : null;
   const total = valid && replacement && replacement.priceMinor * count <= moneyLimit ? replacement.priceMinor * count : null;
   const debt = Math.min(refund ?? 0, document.debtBalanceMinor);
+  // Calcula cuánto queda por cobrar o devolver después de considerar lo que corresponde a la devolución y el saldo pendiente del fiado.
   const difference = total === null || refund === null ? null : total - (refund - debt);
   const sufficient = !!replacementStock && !replacementStock.reason && replacementStock.available >= count;
   const key = JSON.stringify([lineId, count, replacement?.id, replacement?.priceMinor, difference, method]);
@@ -74,6 +78,7 @@ export function ExchangeEditor({ document, close }: { document: EntryDocument; c
   </Card>;
 }
 
+// Calcula la parte del importe original que corresponde a la cantidad devuelta. Tiene en cuenta devoluciones previas para conservar los centavos.
 function portion(amount: number, before: number, count: number, total: number) {
   const divisor = BigInt(total);
   const at = (index: number) => (2n * BigInt(amount) * BigInt(index) + divisor) / (2n * divisor);

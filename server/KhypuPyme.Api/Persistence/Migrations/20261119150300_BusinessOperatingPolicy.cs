@@ -2,12 +2,14 @@
 
 #nullable disable
 
+// Añade preferencias operativas por negocio, como el pago predeterminado, el máximo descuento y cuántos días anticipar avisos de lotes.
 namespace KhypuPyme.Api.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class BusinessOperatingPolicy : Migration
     {
         /// <inheritdoc />
+        // Los valores iniciales preparan las preferencias de negocios existentes. Las restricciones comprueban el rango permitido antes de guardar.
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<bool>(
@@ -85,6 +87,7 @@ namespace KhypuPyme.Api.Persistence.Migrations
         }
 
         /// <inheritdoc />
+        // Revierte las columnas y comprobaciones introducidas para la política operativa.
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropCheckConstraint(

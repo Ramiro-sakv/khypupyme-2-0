@@ -1,8 +1,11 @@
+// Captura la cantidad de copias y las caras impresas de un trabajo de librería.
+
 import type { components } from "../api/schema";
 import { SelectField, TextField } from "../ui/Primitives";
 
 export type PrintDraft = { copies: string; facesPerCopy: string; duplex: boolean };
 
+// Calcula cuántas caras se cobran. Por ejemplo, diez copias de dos caras representan veinte caras impresas.
 export function previewPrinting(draft?: PrintDraft) {
   if (!draft || !/^\d{1,7}$/.test(draft.copies) || !/^\d{1,7}$/.test(draft.facesPerCopy)) return null;
   const copies = Number(draft.copies);

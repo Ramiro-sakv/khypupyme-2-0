@@ -1,3 +1,5 @@
+// Contiene los recorridos de Caja, gastos y fiados. Su contexto común conecta las acciones con el negocio abierto.
+
 import { useRef, useState } from "react";
 import { OperationHeading } from "./OperationHeading";
 import { Alert, Button, Card, DataTable, SelectField, TextField } from "../ui/Primitives";
@@ -53,6 +55,7 @@ export function CashPage({ allowAdjustments = true }: { allowAdjustments?: boole
 
 type CashSession = NonNullable<CashStatus["session"]>;
 
+// Permite seleccionar una sesión y leer sus movimientos. Eso explica qué entradas y salidas componen el efectivo esperado.
 function CashLedger({ current }: { current: CashSession | null }) {
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<CashSession>();
@@ -90,6 +93,7 @@ function CashLedger({ current }: { current: CashSession | null }) {
   </div>;
 }
 
+// Captura un movimiento manual con su importe y motivo. El servicio comercial lo registra ligado a la sesión indicada.
 function CashAdjustment({ session, onDone }: { session: string; onDone: (id: string) => void }) {
   const [direction, setDirection] = useState("in");
   const [amount, setAmount] = useState("");
@@ -111,6 +115,7 @@ function CashAdjustment({ session, onDone }: { session: string; onDone: (id: str
   </OperationForm>;
 }
 
+// El formulario cambia según haya una sesión abierta. Abrir pide el fondo inicial y cerrar pide el efectivo contado.
 function CashEditor({ session }: { session: CashStatus["session"] }) {
   const [amount, setAmount] = useState(session ? editableMoney(session.expectedMinor) : "0");
   const [note, setNote] = useState("");
@@ -134,6 +139,7 @@ function CashEditor({ session }: { session: CashStatus["session"] }) {
   </OperationForm>;
 }
 
+// Permite consultar y registrar gastos separados de las compras de mercadería.
 export function ExpensesPage() {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -159,6 +165,7 @@ export function ExpensesPage() {
   </div>;
 }
 
+// Muestra deudas del negocio y abre los recorridos para registrar o cobrar un fiado.
 export function ReceivablesPage({ allowManual = true }: { allowManual?: boolean }) {
   const [paid, setPaid] = useState(false);
   const [index, setIndex] = useState(1);
@@ -232,6 +239,7 @@ function ManualDebt({ existing, onClose }: { existing?: Receivable; onClose: () 
   </>;
 }
 
+// Prepara el cobro del saldo mostrado. La API comprueba el importe vigente antes de cerrar la deuda.
 function CollectEditor({ debt, close }: { debt: Receivable; close: () => void }) {
   const [method, setMethod] = useState("cash");
   const { showDocument } = useCommerce();

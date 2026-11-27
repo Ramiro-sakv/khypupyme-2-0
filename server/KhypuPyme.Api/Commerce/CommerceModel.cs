@@ -5,6 +5,7 @@ using KhypuPyme.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
+// Vincula las clases comerciales con las tablas de PostgreSQL y declara las relaciones, índices y restricciones que protegen los datos al guardarlos.
 namespace KhypuPyme.Api.Commerce;
 
 internal static class CommerceModel
@@ -51,8 +52,10 @@ internal static class CommerceModel
         codes.HasKey(x => new { x.BusinessId, x.Prefix });
         codes.Property(x => x.Prefix).HasMaxLength(3);
 
+        // cash_sessions guarda el fondo inicial y el efectivo esperado en centavos.
         var cash = BusinessTable<CashSession>(model, "cash_sessions");
         cash.HasKey(x => new { x.BusinessId, x.Id });
+        // El índice único se aplica solo a sesiones abiertas. Permite una por negocio.
         cash.HasIndex(x => x.BusinessId).HasFilter("""
             "ClosedAt" IS NULL
             """).IsUnique();
@@ -63,22 +66,30 @@ internal static class CommerceModel
             AND ("CountedMinor" IS NULL OR "CountedMinor" BETWEEN 0 AND 1000000000000)
             """));
 
+        // commerce_entries guarda la cabecera de cada operación, como su número, fecha y total.
         var entries = BusinessTable<Entry>(model, "commerce_entries");
         entries.HasKey(x => new { x.BusinessId, x.Id });
+        // Cada número de secuencia es único dentro de su negocio.
         entries.HasIndex(x => new { x.BusinessId, x.Sequence }).IsUnique();
         entries.HasIndex(x => new { x.BusinessId, x.Date });
         entries.HasIndex(x => new { x.BusinessId, x.Kind, x.Sequence });
         entries.HasIndex(x => new { x.BusinessId, x.Kind, x.SourceId }).IsUnique().HasFilter("""
             "Kind" IN ('void-expense','sale','collect')
             """);
-        entries.HasOne<Entry>().WithMany().HasForeignKey(x => new { x.BusinessId, x.SourceId }).OnDelete(DeleteBehavior.NoAction);
-        entries.HasOne<CashSession>().WithMany().HasForeignKey(x => new { x.BusinessId, x.CashSessionId }).OnDelete(DeleteBehavior.NoAction);
-        entries.HasOne<Customer>().WithMany().HasForeignKey(x => new { x.BusinessId, x.CustomerId }).OnDelete(DeleteBehavior.NoAction);
+        // Las claves foráneas incluyen BusinessId para mantener las relaciones dentro del negocio.
+        entries.HasOne<Entry>().WithMany()
+            .HasForeignKey(x => new { x.BusinessId, x.SourceId }).OnDelete(DeleteBehavior.NoAction);
+        entries.HasOne<CashSession>().WithMany()
+            .HasForeignKey(x => new { x.BusinessId, x.CashSessionId }).OnDelete(DeleteBehavior.NoAction);
+        entries.HasOne<Customer>().WithMany()
+            .HasForeignKey(x => new { x.BusinessId, x.CustomerId }).OnDelete(DeleteBehavior.NoAction);
 
+        // commerce_lines conserva el detalle que aparecerá en cada comprobante.
         var lines = BusinessTable<EntryLine>(model, "commerce_lines");
         lines.HasKey(x => new { x.BusinessId, x.EntryId, x.LineId });
         lines.Property(x => x.LineId).ValueGeneratedNever();
         lines.Property(x => x.BaseQuantity).HasPrecision(20, 8);
+        // Los rubros guardan detalles como serie, lote o impresión en esta columna.
         lines.Property(x => x.DetailsJson).HasColumnType("jsonb");
         lines.HasOne<Entry>().WithMany(x => x.Lines).HasForeignKey(x => new { x.BusinessId, x.EntryId }).OnDelete(DeleteBehavior.NoAction);
         lines.HasOne<Product>().WithMany().HasForeignKey(x => new { x.BusinessId, x.ProductId }).OnDelete(DeleteBehavior.NoAction);
@@ -87,6 +98,7 @@ internal static class CommerceModel
             "Quantity" BETWEEN 1 AND 1000000 AND "UnitMinor" >= 0 AND "SubtotalMinor" >= 0 AND "CostMinor" >= 0
             """));
 
+        // timber_stock tiene una fila por producto, largo, espesor y ancho en cada negocio.
         var timber = BusinessTable<TimberStock>(model, "timber_stock");
         timber.HasKey(x => new { x.BusinessId, x.ProductId, x.LengthMicros, x.ThicknessMicros, x.WidthMicros });
         timber.HasOne<Product>().WithMany().HasForeignKey(x => new { x.BusinessId, x.ProductId }).OnDelete(DeleteBehavior.NoAction);
@@ -98,6 +110,7 @@ internal static class CommerceModel
             AND "ThicknessMicros" BETWEEN 1 AND 10000000000 AND "WidthMicros" BETWEEN 1 AND 10000000000
             """));
 
+        // El lote separa existencias por partida. Así se distingue qué se puede vender y qué cantidad pertenece a cada lote.
         var lots = BusinessTable<RetailLot>(model, "retail_lots");
         lots.HasKey(x => new { x.BusinessId, x.ProductId, x.Lot });
         lots.HasIndex(x => new { x.BusinessId, x.ProductId, x.ExpiresOn });
@@ -114,6 +127,7 @@ internal static class CommerceModel
         units.ToTable(table => table.HasCheckConstraint("equipment_unit_state",
             """ "State" IN ('available','sold','inspection','discarded') AND "CostMinor" BETWEEN 0 AND 1000000000000 """));
 
+        // El historial de los equipos permite seguir qué le ocurrió a una unidad identificada por su serie.
         var equipment = BusinessTable<EquipmentMovement>(model, "equipment_movements");
         equipment.HasKey(x => new { x.BusinessId, x.SerialKey, x.EntryId });
         equipment.HasOne<EquipmentUnit>().WithMany().HasForeignKey(x => new { x.BusinessId, Key = x.SerialKey }).OnDelete(DeleteBehavior.NoAction);
@@ -181,6 +195,8 @@ internal static class CommerceModel
             "OriginalMinor" > 0 AND "BalanceMinor" BETWEEN 0 AND "OriginalMinor"
             """));
 
+        // commerce_receipts permite recuperar el resultado de una solicitud por su identificador.
+        // El recibo enlaza el identificador de la solicitud con su resultado. Es la referencia que usa el servidor para decidir si el intento ya fue confirmado.
         var receipts = model.Entity<CommerceReceipt>();
         receipts.ToTable("commerce_receipts");
         receipts.HasKey(x => new { x.AccountId, x.Id });
@@ -188,6 +204,7 @@ internal static class CommerceModel
             .HasForeignKey(x => new { x.AccountId, x.BusinessId });
     }
 
+    // Reúne la configuración común de las tablas comerciales, incluida su relación con el negocio al que pertenecen.
     private static EntityTypeBuilder<T> BusinessTable<T>(ModelBuilder model, string table) where T : class, IBusinessRecord
     {
         var entity = model.Entity<T>();

@@ -2,6 +2,7 @@ using KhypuPyme.Api.Commerce;
 using Microsoft.EntityFrameworkCore;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Una ficha de producto puede tener datos de tienda o de moda. Este archivo define dónde se permiten y cómo se reflejan en el catálogo.
 namespace KhypuPyme.Api.Retail;
 
 internal static class StoreProfiles
@@ -11,6 +12,7 @@ internal static class StoreProfiles
         new(product.RetailUnit, product.BoxSize, product.TrackLots, product.Reorder, product.RollLength);
     public static ApparelProfile? Apparel(Product product) => product.Model is null ? null : new(product.Model, product.Size!, product.Color!);
 
+    // Comprueba las opciones de unidad, lote y variante antes de actualizar la ficha. Los movimientos futuros usarán esa configuración.
     public static async Task SaveAsync(CommerceTransaction work, Product product)
     {
         var command = work.Command;

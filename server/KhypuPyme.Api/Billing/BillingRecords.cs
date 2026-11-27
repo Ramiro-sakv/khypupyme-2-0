@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 
+// Estos contratos separan las respuestas para la pantalla de las filas que guarda PostgreSQL.
 namespace KhypuPyme.Api.Billing;
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
@@ -15,6 +16,7 @@ public sealed record PaymentInfo(Guid Id, string PlanId, string PlanName, long A
 public sealed record PlanStatus(bool Active, DateTimeOffset? AccessUntil, bool EmailVerified, bool FirstBusiness, bool TrialUsed,
     DateTimeOffset? TrialUntil, PlanOption[] Plans, DemoCard[] Cards, PaymentInfo[] Payments);
 
+// Conserva el titular, el negocio asociado y la vigencia de la prueba. Se usa para impedir un segundo beneficio en la misma cuenta.
 internal sealed class AccountTrial
 {
     public Guid OwnerId { get; init; }
@@ -23,6 +25,7 @@ internal sealed class AccountTrial
     public DateTimeOffset? EndsAt { get; set; }
 }
 
+// El identificador y el estado del intento permiten volver al resultado después de recargar o reintentar.
 internal sealed class PaymentAttempt
 {
     public Guid BusinessId { get; init; }

@@ -3,12 +3,14 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+// Extiende las fichas y añade estructuras para conversiones, lotes, variantes y equipos identificados por serie.
 namespace KhypuPyme.Api.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class StoreWorkflows : Migration
     {
         /// <inheritdoc />
+        // Introduce datos propios de cada rubro para que el sistema pueda seguir, por ejemplo, cuándo vence un lote o qué unidad fue vendida.
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropCheckConstraint(
@@ -278,6 +280,7 @@ namespace KhypuPyme.Api.Persistence.Migrations
         }
 
         /// <inheritdoc />
+        // Retira las estructuras especializadas incorporadas en este paso.
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(

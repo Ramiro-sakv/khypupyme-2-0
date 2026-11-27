@@ -1,7 +1,9 @@
+param([ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug')
+
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Postgres.Local.ps1')
 $root = Split-Path -Parent $PSScriptRoot
-$api = Join-Path $root 'server/KhypuPyme.Api/bin/Debug/net10.0/KhypuPyme.Api.exe'
+$api = Join-Path $root "server/KhypuPyme.Api/bin/$Configuration/net10.0/KhypuPyme.Api.exe"
 if (-not (Test-Path -LiteralPath $api)) { throw 'Compila la solución antes de probar.' }
 if (Get-NetTCPConnection -State Listen -LocalPort 5183 -ErrorAction SilentlyContinue) {
     throw 'El puerto local de pruebas 5183 debe estar libre.'

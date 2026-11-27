@@ -1,3 +1,5 @@
+// Compone el Inicio del negocio con estado de Caja, accesos rápidos e importes recientes. Recibe los resultados del espacio de trabajo para mostrar lo registrado.
+
 import type { ReactNode } from "react";
 import { Icon } from "../ui/Icon";
 import type { IconName } from "../ui/Icon";

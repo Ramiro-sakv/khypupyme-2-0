@@ -1,3 +1,5 @@
+// Registra apartados, liberaciones y bajas de una partida. El motivo permite seguir por qué cambió su estado o su disponibilidad.
+
 import { useState } from "react";
 import type { Product } from "../commerce/models";
 import { useCommerce } from "../commerce/CommerceContext";

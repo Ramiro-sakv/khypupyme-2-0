@@ -1,3 +1,5 @@
+// Panel que abre el detalle de inventario conservando la lista disponible detrás. Centraliza el cierre y la presentación del diálogo.
+
 
 import { useEffect, useId, useRef } from "react";
 import type { ReactNode } from "react";

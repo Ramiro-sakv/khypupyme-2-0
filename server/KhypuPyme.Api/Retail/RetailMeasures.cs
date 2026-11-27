@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using KhypuPyme.Api.Commerce;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Convierte las cantidades que escribe el usuario a la unidad en que se guarda el saldo. Así una compra por caja y una venta por unidades modifican la misma existencia.
 namespace KhypuPyme.Api.Retail;
 
 internal static partial class RetailMeasures
@@ -12,6 +13,7 @@ internal static partial class RetailMeasures
     [GeneratedRegex(@"^\d{1,7}(?:[.,]\d{1,3})?$", RegexOptions.CultureInvariant)]
     private static partial Regex QuantityPattern();
 
+    // Valida el texto antes de convertirlo a decimal. Así se mantiene una precisión definida y coherente para las cantidades.
     public static decimal Quantity(string? raw, bool allowZero = false)
     {
         if (raw is null || !QuantityPattern().IsMatch(raw) ||
@@ -21,6 +23,7 @@ internal static partial class RetailMeasures
         return amount;
     }
 
+    // Determina cuánto vale la unidad elegida en la unidad base de la ficha, por ejemplo cuántas unidades contiene una caja.
     public static decimal Factor(string unit, RetailProfile profile, bool buying) => unit switch
     {
         "piece" when profile.Unit == "piece" => 1m,
@@ -35,6 +38,7 @@ internal static partial class RetailMeasures
         _ => throw new CommerceFailure("La unidad elegida no corresponde a este producto."),
     };
 
+    // Devuelve la cantidad tal como fue capturada y su equivalente para inventario. Ambas sirven para mostrar la operación de forma comprensible.
     public static (decimal Captured, decimal Base) Convert(RetailInput input, RetailProfile profile, bool buying, bool mixed = false, bool boxSale = false)
     {
         if (input.Loose is int loose && (!mixed || input.Unit != "box" || loose is < 0 or > QuantityLimit))
@@ -49,6 +53,7 @@ internal static partial class RetailMeasures
         return (captured, stored);
     }
 
+    // Valida el cálculo de cobertura de cerámica cuando corresponde y convierte el resultado a la cantidad que se descontará.
     public static (decimal Quantity, TileCoverage? Coverage) ForTrade(Product product, RetailProfile profile,
         RetailInput input, string industry, bool buying, bool quote, TileRequest? selection)
     {
@@ -63,6 +68,7 @@ internal static partial class RetailMeasures
         return (quantity, coverage);
     }
 
+    // Reparte el costo de un saldo al tomar una parte de la cantidad. La aritmética entera evita perder centavos al prorratear.
     public static long Proportion(long amount, decimal from, decimal to, decimal whole)
     {
         if (whole == 0) return 0;
@@ -70,6 +76,7 @@ internal static partial class RetailMeasures
         return (long)(Round(amount * Scaled(to), denominator) - Round(amount * Scaled(from), denominator));
     }
 
+    // Calcula el importe a partir de la tarifa y la cantidad convertida, con redondeo final a centavos.
     public static long Subtotal(long unitMinor, decimal quantity, decimal priceFactor)
     {
         var total = Round(unitMinor * Scaled(quantity), Scaled(priceFactor));

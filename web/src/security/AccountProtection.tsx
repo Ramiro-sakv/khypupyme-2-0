@@ -1,3 +1,5 @@
+// Ofrece cerrar sesiones y solicitar la baja de cuenta. Cuando una acción termina la sesión, actualiza el acceso de la interfaz.
+
 import { useState } from "react";
 import { change } from "../api/client";
 import { Alert, Button, Card } from "../ui/Primitives";

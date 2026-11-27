@@ -1,3 +1,5 @@
+// Define los campos comerciales de la ficha según el rubro y prepara los datos para el alta o la edición.
+
 import { SelectField, TextField } from "../ui/Primitives";
 import type { Product } from "../commerce/models";
 import { unitLabels } from "./measures";
@@ -22,6 +24,7 @@ export function retailIndustry(industry?: string): industry is keyof typeof kind
   return measuredIndustry(industry) || variantIndustry(industry) || equipmentIndustry(industry) || industry === "stationery";
 }
 
+// Toma los datos de una ficha existente al editar. En un alta comienza con valores que encajan en el rubro.
 export function initialProductFields(industry?: string, product?: Product): Fields {
   const kind = product ? product.retail ? industry ?? "convenience" : product.apparel ? industry ?? "clothing" :
     product.equipment ? industry ?? "appliances" : product.specialty?.printing ? "stationery" : "simple" : industry ?? "simple";
@@ -33,6 +36,7 @@ export function initialProductFields(industry?: string, product?: Product): Fiel
     afterOpeningMonths: product?.cosmetic?.afterOpeningMonths?.toString() ?? "" };
 }
 
+// Prepara la parte especializada del comando con los valores capturados por el editor de catálogo.
 export function productFieldsCommand(fields: Fields) {
   return {
     retailProduct: measuredIndustry(fields.kind) ? { unit: fields.unit, boxSize: fields.unit === "piece" ? Number(fields.box) : 1,
@@ -91,6 +95,7 @@ export function ProductFields({ industry, edits, fields, setFields }: {
   </>;
 }
 
+// Determina en qué clase de ficha se necesita seguimiento de partidas. Esa elección cambia los datos que el editor debe pedir.
 function needsLots(fields: Fields) {
   return fields.kind === "cosmetics" || fields.kind === "cement" || fields.kind === "pets" && ["g", "kg", "lb"].includes(fields.unit);
 }

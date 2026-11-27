@@ -10,6 +10,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Una prueba de identidad autoriza una acción concreta durante un tiempo limitado.
+// El servicio liga la autorización a su cuenta, negocio y solicitud, de modo que una aprobación no sirva para otra acción.
 namespace KhypuPyme.Api.Security;
 
 internal sealed class SecurityProofs(KhypuPymeDbContext db, BusinessAccess access, LocalMailbox mailbox,
@@ -23,6 +25,7 @@ internal sealed class SecurityProofs(KhypuPymeDbContext db, BusinessAccess acces
         return new(user.PasswordHash is not null, user is { EmailConfirmed: true, Email: not null } && mailbox.IsEnabled);
     }
 
+    // Comprueba la identidad y conserva la acción autorizada. En ciertas operaciones se emite un código adicional al correo.
     public async Task<ProofResult> ApproveAsync(Guid owner, ProofInput input, CancellationToken ct)
     {
         if (input.Id == Guid.Empty || input.Purpose is not ("correction" or "delete-business" or "delete-account" or "revoke-sessions"))
@@ -76,6 +79,7 @@ internal sealed class SecurityProofs(KhypuPymeDbContext db, BusinessAccess acces
         return new(proof.Stage, proof.ExpiresAt);
     }
 
+    // Prepara la huella y el motivo que se compararán al ejecutar el comando. Cambiar su contenido exige volver a confirmar.
     private async Task<(string Binding, string Reason)> BindingAsync(ProofInput input, CancellationToken ct)
     {
         if (input.Purpose == "correction")
@@ -103,6 +107,7 @@ internal sealed class SecurityProofs(KhypuPymeDbContext db, BusinessAccess acces
 
     public static string NameBinding(string name) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(name)));
 
+    // Busca la aprobación del titular y comprueba que corresponda al propósito, al negocio y a la huella recibida.
     public async Task<SecurityProof> FindAsync(Guid owner, Guid id, string purpose, Guid? business, string binding, CancellationToken ct)
     {
         await LockAsync(owner, id, ct);
@@ -112,6 +117,7 @@ internal sealed class SecurityProofs(KhypuPymeDbContext db, BusinessAccess acces
         return proof;
     }
 
+    // Valida y marca el permiso como usado. El segundo envío no puede reutilizar la misma confirmación.
     public void Consume(SecurityProof proof)
     {
         RequireApproved(proof);
@@ -137,6 +143,7 @@ internal sealed class SecurityProofs(KhypuPymeDbContext db, BusinessAccess acces
         await CommitAndDeliverAsync(tx, message, ct);
     }
 
+    // Comprueba el código de una etapa y actualiza su estado de uso o de intentos dentro de la transacción.
     public async Task VerifyCodeAsync(IDbContextTransaction tx, SecurityProof proof, string stage, string? raw, CancellationToken ct)
     {
         if (proof.Stage != stage || proof.ExpiresAt <= clock.GetUtcNow() || proof.ProtectedCode is null)
@@ -154,6 +161,7 @@ internal sealed class SecurityProofs(KhypuPymeDbContext db, BusinessAccess acces
             proof.Attempts >= 5 ? 429 : 400);
     }
 
+    // Genera un código temporal y aplica límites de envío a la cuenta. Así se acotan reenvíos y pruebas de códigos.
     private async Task<Mail> IssueAsync(SecurityProof proof, IdentityUser<Guid> user, string stage, CancellationToken ct)
     {
         if (user is not { EmailConfirmed: true, Email: not null } || !mailbox.IsEnabled)
@@ -179,6 +187,7 @@ internal sealed class SecurityProofs(KhypuPymeDbContext db, BusinessAccess acces
         return new(user.Email, stage == "delete-mail" ? "delete-business" : "security-identity", code);
     }
 
+    // Guarda primero el reto y después entrega el mensaje. Cuando llega el código, ya existe un registro con el que compararlo.
     private async Task CommitAndDeliverAsync(IDbContextTransaction tx, Mail mail, CancellationToken ct)
     {
         await db.SaveChangesAsync(ct);

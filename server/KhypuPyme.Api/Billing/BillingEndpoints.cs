@@ -3,10 +3,12 @@ using KhypuPyme.Api.Accounts;
 using KhypuPyme.Api.Businesses;
 using KhypuPyme.Api.Commerce;
 
+// Estas rutas exponen las licencias de demostración que habilitan las operaciones comerciales de un negocio.
 namespace KhypuPyme.Api.Billing;
 
 internal static class BillingEndpoints
 {
+    // Separa consultar el estado, empezar la prueba y manejar los intentos de pago de demostración.
     public static void MapBilling(this WebApplication app)
     {
         var group = app.MapGroup("/api/v1/businesses/{businessId:guid}/plan").RequireAuthorization("Account").WithTags("Planes");
@@ -34,6 +36,7 @@ internal static class BillingEndpoints
             .Accepts<CheckoutAction>("application/json").Produces<PaymentInfo>();
     }
 
+    // Convierte el JSON de la petición al contrato esperado y devuelve un error controlado si ese JSON es inválido.
     private static async Task<T> ReadInputAsync<T>(HttpRequest request, CancellationToken ct) where T : class
     {
         const string message = "El pago de demostración solo admite los datos de la selección y del intento.";

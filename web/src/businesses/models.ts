@@ -1,3 +1,5 @@
+// Da nombres cortos a los tipos de negocios definidos en OpenAPI. Permite usar los mismos campos que anuncia la API en varias pantallas.
+
 import type { components } from "../api/schema";
 
 export type BusinessCard = components["schemas"]["BusinessCard"];

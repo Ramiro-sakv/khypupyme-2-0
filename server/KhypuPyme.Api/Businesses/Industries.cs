@@ -1,3 +1,5 @@
+// Este catálogo reúne los identificadores y etiquetas de los rubros.
+// El identificador se conserva en PostgreSQL y permite usar la misma actividad en validaciones, navegación y formularios.
 namespace KhypuPyme.Api.Businesses;
 
 internal static class Industries

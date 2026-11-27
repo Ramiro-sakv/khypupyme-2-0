@@ -1,3 +1,5 @@
+// Convierte entre presentaciones del catálogo y la unidad de stock. También interpreta el detalle comercial que se presenta en historiales y PDF.
+
 import type { components } from "../api/schema";
 import type { EntryDocument, Product } from "../commerce/models";
 import { dateLabel } from "../commerce/models";
@@ -28,6 +30,7 @@ export function retailUnits(profile: RetailProfile, buying: boolean, mixed?: boo
   return baseUnit(profile.unit) === "g" ? ["g", "kg", "lb"] : ["ml", "l"];
 }
 
+// Calcula el equivalente y, si se dispone del precio, el importe. Dos cajas de 24 representan 48 unidades aunque se capturen como dos cajas.
 export function measurePreview(quantity: string, unit: string, profile: RetailProfile, buying: boolean, minor: number | null,
   loose?: number | null, mixed?: boolean, boxSale?: boolean) {
   const match = /^(\d{1,7})(?:[.,](\d{1,3}))?$/.exec(quantity.trim());
@@ -57,6 +60,7 @@ export function productAvailability(product: Product) {
 
 export const seriesFromText = (text: string) => text.split(/[\r\n;,]+/).map((item) => item.trim()).filter(Boolean);
 
+// Genera la descripción visible a partir de los detalles guardados, como medida, lote o tipo de impresión.
 export function describeLine(line: EntryDocument["lines"][number]) {
   const details = line.details;
   if (!details) return "";
@@ -97,6 +101,7 @@ export function lineQuantity(line: EntryDocument["lines"][number]) {
 export const lineRate = (line: EntryDocument["lines"][number]) => line.details?.rateUnit ?
   " / " + (line.details.rateUnit === "piece" && line.details.specialty?.material?.cement ? "bolsa" : unitLabels[line.details.rateUnit]) : "";
 
+// Usa lo vendido y lo ya devuelto para orientar cuánto sigue disponible para una devolución del documento.
 export function remainingQuantity(line: EntryDocument["lines"][number]) {
   const details = line.details;
   if (details?.direction === "returned") return 0;

@@ -5,12 +5,14 @@ using KhypuPyme.Api.Timber;
 using Microsoft.EntityFrameworkCore;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Estas consultas llevan al catálogo y al almacén los datos específicos de los rubros, como variantes, lotes y equipos.
 namespace KhypuPyme.Api.Retail;
 
 internal sealed class StoreReads(KhypuPymeDbContext db, TimeProvider clock)
 {
     private DateOnly Today => LocalDate(clock.GetUtcNow());
 
+    // Selecciona los campos que usa la ficha y calcula las existencias vendibles cuando se trabaja por lotes.
     public IQueryable<ProductInfo> Describe(IQueryable<Product> products)
     {
         var today = Today;
@@ -27,12 +29,14 @@ internal sealed class StoreReads(KhypuPymeDbContext db, TimeProvider clock)
             SpecialtyProfiles.Read(x), x.IsService));
     }
 
+    // Busca el código exacto normalizado de una ficha activa. Este es el recorrido que utiliza el lector de códigos.
     public Task<ProductInfo?> CodeAsync(string? code, CancellationToken ct)
     {
         var key = Text(Text(code, 40, "el código", true).ToUpperInvariant(), 40, "el código", true);
         return Describe(db.Set<Product>().AsNoTracking().Where(x => x.Active && x.NormalizedCode == key)).SingleOrDefaultAsync(ct);
     }
 
+    // Devuelve las combinaciones activas de talla y color de un modelo para construir su matriz.
     public Task<ProductInfo[]> VariantsAsync(string? model, CancellationToken ct)
     {
         var key = Text(model, 80, "el modelo", true).ToUpperInvariant();
@@ -40,6 +44,7 @@ internal sealed class StoreReads(KhypuPymeDbContext db, TimeProvider clock)
             .OrderBy(x => x.Size).ThenBy(x => x.Color)).ToArrayAsync(ct);
     }
 
+    // Amplía la búsqueda por nombre o código con los datos específicos del rubro, como especie, marca o referencia.
     public IQueryable<Product> SearchProducts(IQueryable<Product> query, string? search)
     {
         var term = CommerceReads.Search(search);
@@ -59,6 +64,7 @@ internal sealed class StoreReads(KhypuPymeDbContext db, TimeProvider clock)
         return query;
     }
 
+    // Busca marca, modelo y rango de años dentro de una misma compatibilidad. Así los campos de registros diferentes no producen coincidencias.
     public IQueryable<Product> FilterCompatibility(IQueryable<Product> query, string? brand, string? model, int? year)
     {
         if (brand is null && model is null && year is null) return query;
@@ -71,6 +77,7 @@ internal sealed class StoreReads(KhypuPymeDbContext db, TimeProvider clock)
             (year == null || f.FromYear <= year && f.ToYear >= year)));
     }
 
+    // Lista los lotes del producto y permite distinguir los que se pueden vender en la fecha actual.
     public Task<CommercePage<LotInfo>> LotsAsync(Guid product, string? lot, bool? sellable, int? page, CancellationToken ct)
     {
         var today = Today;
@@ -101,6 +108,7 @@ internal sealed class StoreReads(KhypuPymeDbContext db, TimeProvider clock)
         return CommerceReads.PageAsync(DescribeUnits(serials.OrderBy(x => x.Key)), page, ct, 100);
     }
 
+    // Recupera una unidad por su serie y sus movimientos para revisar en qué operación entró, salió o fue inspeccionada.
     public async Task<UnitHistory?> SerialAsync(string? serial, CancellationToken ct)
     {
         var key = RetailMeasures.SeriesKey(serial);
@@ -116,6 +124,7 @@ internal sealed class StoreReads(KhypuPymeDbContext db, TimeProvider clock)
         return new UnitHistory(unit, history);
     }
 
+    // Resume avisos como reposición y vencimientos para que el negocio sepa dónde tiene que actuar primero.
     public async Task<StoreAttention> AttentionAsync(CancellationToken ct)
     {
         var today = Today;

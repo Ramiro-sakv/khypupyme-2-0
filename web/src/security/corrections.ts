@@ -1,3 +1,5 @@
+// Relaciona comandos comerciales con la revisión de identidad y una descripción de lo que se va a autorizar.
+
 import { get } from "../api/client";
 import { bob, documentName } from "../commerce/models";
 import type { CashStatus, Command } from "../commerce/models";
@@ -5,6 +7,7 @@ import type { CashStatus, Command } from "../commerce/models";
 const protectedKinds = new Set(["return", "exchange", "void-expense", "void-debt", "cash-adjust", "stock-in", "stock-loss", "inspection",
   "hold-lot", "release-lot", "discard-lot", "open-cement", "configure-business"]);
 
+// Determina cuándo abrir el diálogo antes del envío. Algunas acciones necesitan consultar la situación registrada, como un cierre de Caja.
 export async function needsIdentity(command: Command, path: string) {
   if (protectedKinds.has(command.kind) || (command.kind === "advance-work" && command.workState === "cancelled") || ((command.kind === "product" || command.kind === "customer") && command.entityId)) return true;
   if (command.kind !== "close-cash") return false;
@@ -12,6 +15,7 @@ export async function needsIdentity(command: Command, path: string) {
   return !!session && !session.closedAt && session.id === command.sourceId && session.expectedMinor !== command.amountMinor;
 }
 
+// Resume el negocio y la acción para que la persona pueda comprobar qué está autorizando.
 export function correctionEffect(business: string, command: Command) {
   const label = command.kind === "product" ? "Edición de ficha de producto" : command.kind === "customer" ? "Edición de cliente" :
     command.kind === "close-cash" ? "Cierre con diferencia de efectivo" :

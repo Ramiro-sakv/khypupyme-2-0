@@ -2,10 +2,12 @@ using KhypuPyme.Api.Businesses;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
+// Define cómo se guardan las pruebas gratuitas y los intentos de pago de demostración en PostgreSQL.
 namespace KhypuPyme.Api.Billing;
 
 internal static class BillingModel
 {
+    // Concentra claves y restricciones del esquema de planes para que la base también pueda rechazar estados inválidos.
     public static void Configure(ModelBuilder model)
     {
         model.Entity<AccountTrial>(entry =>

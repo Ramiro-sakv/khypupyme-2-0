@@ -5,6 +5,7 @@ using KhypuPyme.Api.Retail;
 using KhypuPyme.Api.Services;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Ejecuta compras, ventas, cotizaciones, devoluciones y pérdidas. Utiliza los servicios de inventario de cada rubro y registra los movimientos en la misma transacción comercial.
 namespace KhypuPyme.Api.Commerce;
 
 internal sealed class TradeOperations(CommerceTransaction work)
@@ -15,6 +16,7 @@ internal sealed class TradeOperations(CommerceTransaction work)
     public Task<Guid> PurchaseAsync() => ReceiveAsync(stockAdjustment: false);
     public Task<Guid> StockInAsync() => ReceiveAsync(stockAdjustment: true);
 
+    // Una compra y una entrada manual comparten el ingreso de stock. La opción indica si corresponde tratarla como compra o como ajuste.
     private async Task<Guid> ReceiveAsync(bool stockAdjustment)
     {
         var rows = await PrepareAsync(useCatalogPrice: false);
@@ -58,56 +60,78 @@ internal sealed class TradeOperations(CommerceTransaction work)
 
     public async Task<Guid> SellAsync()
     {
+        // La cotización comparte el cálculo de la venta y conserva el stock.
         var quote = work.Command.Kind == "quote";
+        // Resuelve las fichas y prepara las líneas con las reglas de precio del catálogo.
         var rows = await PrepareAsync(useCatalogPrice: true);
+        // Suma los subtotales y lee el descuento como un entero en centavos.
         var gross = Total(rows.Select(x => x.Subtotal));
         var discount = Money(work.Command.DiscountMinor ?? 0, "un descuento");
         if (discount > gross) throw new CommerceFailure("El descuento supera el subtotal.");
+
+        // El negocio define el descuento máximo de una venta nueva o una cotización.
         var settings = await work.SettingsAsync();
         if ((quote || work.Command.SourceId is null) && discount > (decimal)gross * settings.MaxDiscountPercent / 100)
             throw new CommerceFailure($"El negocio permite un descuento máximo del {settings.MaxDiscountPercent}%.");
 
+        // Crea la cabecera del comprobante con el prefijo de su tipo.
         var entry = await work.NewEntryAsync(quote ? "COT" : "VEN");
         if (work.Command.CustomerId is Guid customerId)
         {
+            // Guarda el nombre del cliente tal como figuraba al hacer la operación.
             var customer = await work.CustomerAsync(customerId);
             entry.CustomerId = customer.Id;
             entry.CustomerName = customer.Name;
         }
         else entry.CustomerName = "Cliente ocasional";
+
+        // El comprobante conserva el total después de aplicar el descuento.
         entry.TotalMinor = gross - discount;
         entry.DiscountMinor = discount;
+
         if (quote) entry.ExpiresOn = work.Today.AddDays(settings.QuoteDays);
         else
         {
+            // Solo una venta registra forma de pago y puede convertir una cotización.
             entry.Method = Payment(work.Command.Method, allowCredit: true);
             if (work.Command.SourceId is not null) await LinkQuoteAsync(entry, rows);
+            // Si nace de un trabajo o una cita, vincula el cobro dentro de la misma transacción.
             if (work.Command.WorkLink is not null) await new WorkOperations(work).LinkSaleAsync(entry, work.Command.Lines!);
             if (entry.Method == "credit")
             {
+                // Un fiado requiere autorización del negocio, cliente registrado y monto positivo.
                 if (!settings.AllowNewCredit) throw new CommerceFailure("El negocio tiene desactivados los fiados nuevos.");
                 if (entry.CustomerId is not Guid registered || entry.TotalMinor == 0)
                     throw new CommerceFailure("Una venta fiada requiere un cliente registrado y un importe positivo.");
                 work.Db.Add(new Receivable
                 {
-                    BusinessId = work.Business.Id, SaleId = entry.Id, CustomerId = registered,
-                    OriginalMinor = entry.TotalMinor, BalanceMinor = entry.TotalMinor,
+                    BusinessId = work.Business.Id,
+                    SaleId = entry.Id,
+                    CustomerId = registered,
+                    OriginalMinor = entry.TotalMinor,
+                    BalanceMinor = entry.TotalMinor,
                 });
+                // La deuda queda reflejada también como movimiento en el comprobante.
                 entry.DebtDeltaMinor = entry.TotalMinor;
             }
         }
 
+        // Reparte el descuento acumulado para que los importes de las líneas cuadren en centavos.
         long runningGross = 0;
         foreach (var row in rows)
         {
             var net = row.Subtotal - Share(discount, runningGross, runningGross + row.Subtotal, gross);
             runningGross += row.Subtotal;
+            // Cada rubro agrega el detalle y, para una venta, descuenta lo que corresponda.
             await AddSaleLinesAsync(entry, row, net, quote);
         }
+
         if (!quote)
         {
             entry.SalesMinor = entry.TotalMinor;
+            // La misma venta puede incluir envases entregados o devueltos.
             await new ContainerService(work).MoveAsync(entry, work.Command.Containers);
+            // Aplica el cobro a Caja cuando la forma de pago es efectivo.
             await work.ApplyCashAsync(entry, entry.TotalMinor);
         }
         return entry.Id;
@@ -117,16 +141,19 @@ internal sealed class TradeOperations(CommerceTransaction work)
     {
         if (row.Printing is { } printing)
         {
+            // Una impresión guarda las caras y la tarifa en el detalle.
             entry.Lines.Add(Snapshot(entry, row, net, 0, new(Printing: printing, RateUnit: "face")));
         }
         else if (row.Product.IsService)
         {
+            // Un servicio aporta al importe del comprobante y tiene costo de inventario cero.
             entry.Lines.Add(Snapshot(entry, row, net, 0, new(IsService: true)));
         }
         else if (!quote && row.Serials is { Length: > 0 } serials)
         {
             for (var i = 0; i < serials.Length; i++)
             {
+                // Cada equipo aporta su costo y conserva serie y garantía en su propia línea.
                 var unit = await equipment.SellAsync(row.Product, serials[i], entry);
                 entry.CostMinor += unit.CostMinor;
                 entry.Lines.Add(Snapshot(entry, row with { Quantity = 1 }, Share(net, i, i + 1, serials.Length), unit.CostMinor,
@@ -135,6 +162,7 @@ internal sealed class TradeOperations(CommerceTransaction work)
         }
         else if (row.Measure is { } measure)
         {
+            // Descuenta la cantidad base y guarda los lotes que realmente se consumieron.
             var take = quote ? (Cost: 0L, Lots: Array.Empty<LotAllocation>()) :
                 await retail.RemoveAsync(row.Product, measure, row.BaseQuantity!.Value);
             entry.CostMinor += take.Cost;
@@ -143,15 +171,21 @@ internal sealed class TradeOperations(CommerceTransaction work)
         }
         else
         {
+            // En madera, la salida corresponde al largo, espesor y ancho exactos de la fila.
             var cost = quote ? 0 : await inventory.RemoveAsync(row.Product, row.Timber, row.Quantity);
             entry.CostMinor += cost;
             var variant = StoreProfiles.Apparel(row.Product);
             if (quote && row.Product.WarrantyMonths is not null) direction = "choose-series";
-            entry.Lines.Add(Snapshot(entry, row, net, cost, variant is null && direction is null && row.TimberCatalogMinor is null ? null :
-                new(Apparel: variant, Direction: direction, TimberCatalogMinor: row.TimberCatalogMinor)));
+            // Guarda la variante o la tarifa original si hay datos específicos del rubro.
+            entry.Lines.Add(Snapshot(
+                entry, row, net, cost,
+                variant is null && direction is null && row.TimberCatalogMinor is null
+                    ? null
+                    : new(Apparel: variant, Direction: direction, TimberCatalogMinor: row.TimberCatalogMinor)));
         }
     }
 
+    // Cuando una venta viene de una cotización, comprueba su origen y deja el enlace a la oferta para poder seguir el recorrido.
     private async Task LinkQuoteAsync(Entry entry, TradeRow[] rows)
     {
         var source = await work.SourceAsync("quote", includeLines: true);
@@ -169,6 +203,7 @@ internal sealed class TradeOperations(CommerceTransaction work)
         entry.SourceId = source.Id;
     }
 
+    // Parte de la venta original. Sus cantidades y valores guardados permiten calcular una devolución parcial aunque el catálogo haya cambiado.
     public async Task<Guid> ReturnAsync()
     {
         var exchange = work.Command.Kind == "exchange";
@@ -274,6 +309,7 @@ internal sealed class TradeOperations(CommerceTransaction work)
         return entry.Id;
     }
 
+    // Registra una salida de mercadería por pérdida y conserva su costo para que aparezca en el resultado del negocio.
     public async Task<Guid> LossAsync()
     {
         var inputs = Lines(work.Command.Lines);
@@ -309,6 +345,7 @@ internal sealed class TradeOperations(CommerceTransaction work)
         return entry.Id;
     }
 
+    // Convierte las líneas recibidas en datos aptos para operar. Consulta la ficha y aplica los requisitos de unidades, precios o detalles según el producto.
     private async Task<TradeRow[]> PrepareAsync(bool useCatalogPrice, CommandLine[]? replacements = null)
     {
         var inputs = Lines(replacements ?? work.Command.Lines, buying: !useCatalogPrice);
@@ -373,6 +410,7 @@ internal sealed class TradeOperations(CommerceTransaction work)
         return rows.ToArray();
     }
 
+    // Guarda una copia de los datos confirmados en la línea. El historial y el PDF usan esa copia aunque después se edite el producto.
     private static EntryLine Snapshot(Entry entry, TradeRow row, long subtotal, long cost, LineDetails? details = null) => new()
     {
         BusinessId = entry.BusinessId, EntryId = entry.Id, ProductId = row.Product.Id,

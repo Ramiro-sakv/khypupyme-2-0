@@ -1,3 +1,5 @@
+// Solicita al titular confirmar su identidad para una acción protegida. El detalle visible ayuda a revisar el efecto antes de autorizarlo.
+
 import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { change, get } from "../api/client";
@@ -6,6 +8,7 @@ import { Alert, Button, TextField } from "../ui/Primitives";
 
 type Methods = components["schemas"]["SecurityMethods"];
 type Reply = components["schemas"]["ProofResult"];
+// Define el contexto de la acción. La contraseña y el código pertenecen a la captura del diálogo y se incluyen solo cuando se solicitan.
 export type ProofRequest = Omit<components["schemas"]["ProofInput"], "password" | "code" | "sendCode">;
 export const securityPath = "/api/v1/security";
 
@@ -31,6 +34,7 @@ export function IdentityDialog({ request, title, effect, done, cancel }: {
     return () => controller.abort();
   }, []);
 
+  // La pantalla envía la confirmación al servidor y continúa la acción solo según el resultado de esa comprobación.
   async function confirm(event: FormEvent) {
     event.preventDefault();
     if (!methods || busy) return;

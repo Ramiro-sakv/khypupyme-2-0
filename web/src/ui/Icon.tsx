@@ -1,3 +1,5 @@
+// Catálogo de iconos de la aplicación en SVG. Una pantalla elige un nombre para reutilizar el dibujo y su tamaño estándar.
+
 const paths = {
   home: "M3 11 12 3l9 8M5 10v10h14V10M9 20v-6h6v6",
   settings: "M4 7h16M4 17h16M8 5v4m8 6v4",

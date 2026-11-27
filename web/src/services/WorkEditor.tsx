@@ -1,3 +1,5 @@
+// Prepara citas y órdenes de trabajo con los campos de cada actividad. Una orden existente recupera sus datos para que puedan revisarse al editar.
+
 import { useState } from "react";
 import { useCommerceData } from "../commerce/CommerceContext";
 import { LoadFeedback, OperationForm, Pages, useCommercialForm } from "../commerce/CommerceUi";
@@ -76,6 +78,7 @@ export function WorkEditor({ industry, record, initialDay, close, onSaved }: {
   </OperationForm>;
 }
 
+// Reutiliza la búsqueda y selección para campos con registros relacionados, como el cliente o la ficha de servicio.
 function Choice<T extends { id: string; name: string }>({ label, resource, filters, selected, choose, display, clear }: {
   label: string; resource: string; filters?: Record<string, string>; selected?: string;
   choose: (item: T) => void; display?: (item: T) => string; clear?: () => void;

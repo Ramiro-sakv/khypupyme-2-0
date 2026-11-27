@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
+// Aquí Entity Framework relaciona las pruebas de identidad, bajas y auditorías con sus tablas y claves en PostgreSQL.
 namespace KhypuPyme.Api.Security;
 
 internal static class SecurityModel
@@ -28,6 +29,7 @@ internal static class SecurityModel
         audit.Property(x => x.Effect).HasColumnType("jsonb");
     }
 
+    // Aplica la configuración compartida de los registros que se consultan por titular.
     private static EntityTypeBuilder<T> Owned<T>(ModelBuilder model, string table,
         System.Linq.Expressions.Expression<Func<T, object?>> foreignKey) where T : class
     {

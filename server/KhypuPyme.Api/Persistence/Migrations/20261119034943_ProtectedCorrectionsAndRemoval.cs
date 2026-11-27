@@ -3,12 +3,14 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+// Incorpora auditoría, confirmación de identidad y seguimiento de solicitudes de baja. Añade la marca de recepción al recibo comercial.
 namespace KhypuPyme.Api.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class ProtectedCorrectionsAndRemoval : Migration
     {
         /// <inheritdoc />
+        // Registra el estado de las bajas para que una operación interrumpida pueda continuar con el mismo seguimiento.
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
@@ -216,6 +218,7 @@ namespace KhypuPyme.Api.Persistence.Migrations
         }
 
         /// <inheritdoc />
+        // Revierte los cambios de esquema para correcciones protegidas y baja. El código Down describe qué tablas y restricciones cambian.
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql("DROP POLICY business_confirmed_removal ON khypupyme.businesses;");

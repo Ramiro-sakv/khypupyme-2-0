@@ -1,3 +1,5 @@
+// Coordina el ingreso de las aplicaciones instaladas. El usuario autoriza en el navegador y el cliente completa el ingreso tras recibir el regreso.
+
 import { apiUrl, base64, bridge, clientId, redirectUri } from "./platform";
 
 type Grant = { access_token: string; refresh_token: string; expires_in: number };
@@ -15,6 +17,7 @@ async function post(path: string, data: Record<string, string>) {
   });
 }
 
+// Envía los datos de autorización a la API y conserva la sesión a través de la capa nativa.
 async function exchange(fields: Record<string, string>) {
   const response = await post("/connect/token", fields);
   if (!response.ok) {
@@ -33,6 +36,7 @@ async function readHandshake() {
   return raw ? JSON.parse(raw) as Handshake : null;
 }
 
+// Comprueba el resultado de la vuelta del navegador antes de intercambiar el código por tokens.
 async function complete(handshake: Handshake) {
   const callback = await bridge.callback();
   if (!callback) return null;
@@ -46,6 +50,7 @@ async function complete(handshake: Handshake) {
   return token;
 }
 
+// Entrega a las peticiones un token de acceso. Cuando hace falta, el flujo intenta renovar la sesión con el servidor.
 export function nativeToken() {
   if (access && access.expires > Date.now()) return Promise.resolve(access.value);
   obtaining ??= (async () => {
@@ -61,6 +66,7 @@ export function nativeToken() {
   return obtaining;
 }
 
+// Prepara la vuelta con PKCE y un estado asociado al intento. Esos datos permiten comprobar que el regreso corresponde al ingreso iniciado.
 export async function nativeLogin() {
   const saved = await readHandshake();
   if (saved && saved.expires > Date.now() && await complete(saved)) return;
@@ -83,6 +89,7 @@ export async function nativeLogin() {
   throw new Error("Se agotó el tiempo para regresar del navegador. Puedes volver a intentar.");
 }
 
+// Limpia el acceso del dispositivo y, cuando corresponde, solicita al servidor la revocación de la sesión.
 export async function nativeLogout(revoke = true) {
   const refresh = await bridge.load("token");
   const current = access?.value;

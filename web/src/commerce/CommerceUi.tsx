@@ -1,3 +1,5 @@
+// Reúne controles de búsqueda, paginación, pago y formularios comerciales. Así Caja, Ventas y Catálogo comparten el mismo manejo de interacción.
+
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { Alert, Button, Card, EmptyState, SelectField, TextField } from "../ui/Primitives";
@@ -21,6 +23,7 @@ export function NoRecords({ children = "Aquí aparecerán las operaciones confir
   return <EmptyState icon="document" title="Todavía no hay registros">{children}</EmptyState>;
 }
 
+// Usa hasMore de la respuesta para saber si hay otra página. Es suficiente para navegar sin calcular el total de filas en la interfaz.
 export function Pages({ index, hasMore, onChange }: { index: number; hasMore?: boolean; onChange: (page: number) => void }) {
   if (index === 1 && !hasMore) return null;
   return <nav className="inline-actions pagination" aria-label="Páginas del listado">
@@ -30,6 +33,7 @@ export function Pages({ index, hasMore, onChange }: { index: number; hasMore?: b
   </nav>;
 }
 
+// Algunas pantallas consultan mientras se escribe y otras esperan el envío. La opción instant mantiene ambos recorridos con el mismo campo.
 export function SearchForm({ label, onSearch, instant = false }: { label: string; onSearch: (query: string) => void; instant?: boolean }) {
   const [value, setValue] = useState("");
   const timer = useRef<number>(undefined);
@@ -60,10 +64,12 @@ export function PaymentField({ value, onChange, credit = false, disabled }: {
   </SelectField>;
 }
 
+// Conecta el formulario con el contexto del negocio y reúne el estado de envío, mensajes y resultado.
 export function useCommercialForm(allowReadOnly = false) {
   const workspace = useCommerce();
   const [error, setError] = useState("");
   const [processing, setProcessing] = useState(false);
+
   async function submit(
     prepare: () => CommandInput | Promise<CommandInput>,
     complete: (result: CommandResult) => void | Promise<void>,
@@ -71,14 +77,29 @@ export function useCommercialForm(allowReadOnly = false) {
   ) {
     setError("");
     setProcessing(true);
-    try { await complete(await workspace.execute(await prepare(), await stamp?.())); }
-    catch (failure) { setError(failure instanceof Error ? failure.message : "No se pudo completar la operación."); }
-    finally { setProcessing(false); }
+    try {
+      // Prepara los datos y asegura el borrador antes de enviar el comando.
+      // complete recibe el resultado confirmado y abre el comprobante si la pantalla lo pide.
+      await complete(await workspace.execute(await prepare(), await stamp?.()));
+    } catch (failure) {
+      // Muestra el mensaje de validación o de red en el formulario.
+      setError(failure instanceof Error ? failure.message : "No se pudo completar la operación.");
+    } finally {
+      setProcessing(false);
+    }
   }
-  return { error, submit, processing, blocked: processing || workspace.busy || !!workspace.pending || !workspace.ready ||
-    (workspace.readOnly && !allowReadOnly) };
+
+  // Desactiva los envíos mientras hay una operación en curso o pendiente.
+  return {
+    error,
+    submit,
+    processing,
+    blocked: processing || workspace.busy || !!workspace.pending || !workspace.ready ||
+      (workspace.readOnly && !allowReadOnly)
+  };
 }
 
+// Recibe la captura de cada operación y sus estados de error o bloqueo para compartir el mismo pie de formulario.
 export function OperationForm({ title, onClose, children, error, blocked, action = "Guardar", onSubmit }: {
   title: string; onClose?: () => void; children: ReactNode; error: string; blocked: boolean; action?: string;
   onSubmit: (event: FormEvent) => void;

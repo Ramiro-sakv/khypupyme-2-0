@@ -2,12 +2,14 @@
 
 #nullable disable
 
+// Añade el número de meses de uso tras abrir el producto, un dato distinto de la fecha de vencimiento del lote.
 namespace KhypuPyme.Api.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class InventoryProfileDetails : Migration
     {
         /// <inheritdoc />
+        // La restricción limita el rango de meses admitidos para que PostgreSQL también valide ese dato.
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<int>(
@@ -25,6 +27,7 @@ namespace KhypuPyme.Api.Persistence.Migrations
         }
 
         /// <inheritdoc />
+        // Retira la restricción y el campo de duración tras apertura.
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropCheckConstraint(

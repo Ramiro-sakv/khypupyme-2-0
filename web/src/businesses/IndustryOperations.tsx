@@ -1,3 +1,5 @@
+// Presenta acciones frecuentes de cada rubro. Un acceso abre una vista y puede enfocar un control, como el lector de códigos.
+
 import { useCommerceData } from "../commerce/CommerceContext";
 import type { components } from "../api/schema";
 import { measuredIndustry, equipmentIndustry } from "../retail/ProductFields";

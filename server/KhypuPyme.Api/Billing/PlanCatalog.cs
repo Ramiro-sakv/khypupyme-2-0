@@ -1,3 +1,4 @@
+// El catálogo define duraciones, precios y tarjetas de muestra que acepta la API. Así el importe sale de una selección conocida por el servidor.
 namespace KhypuPyme.Api.Billing;
 
 internal static class PlanCatalog
@@ -23,6 +24,7 @@ internal static class PlanCatalog
 
     private static readonly TimeZoneInfo Bolivia = TimeZoneInfo.FindSystemTimeZoneById("America/La_Paz");
 
+    // Calcula el vencimiento en la zona de Bolivia. Sumar meses de calendario respeta la duración real de cada mes.
     public static DateTimeOffset End(DateTimeOffset from, int days, int months)
     {
         if (months == 0) return from.AddDays(days).ToUniversalTime();

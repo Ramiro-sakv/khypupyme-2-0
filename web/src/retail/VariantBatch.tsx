@@ -1,3 +1,5 @@
+// Permite registrar varias tallas y colores juntos. Las fichas se envían en un alta común y el servidor conserva un identificador y código por variante.
+
 import { useState } from "react";
 import { Button, TextField } from "../ui/Primitives";
 import { OperationForm, useCommercialForm } from "../commerce/CommerceUi";

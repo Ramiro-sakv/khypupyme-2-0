@@ -2,10 +2,12 @@ using System.Xml.Linq;
 using Microsoft.AspNetCore.DataProtection.Repositories;
 using Npgsql;
 
+// El perfil de piloto usa este repositorio para guardar su conjunto de claves de protección en PostgreSQL.
 namespace KhypuPyme.Api.Hosting;
 
 internal sealed class PilotKeyRing(string connectionString) : IXmlRepository
 {
+    // Recupera el conjunto de claves al arrancar. Así las sesiones protegidas con claves anteriores se pueden volver a validar.
     public IReadOnlyCollection<XElement> GetAllElements()
     {
         using var connection = new NpgsqlConnection(connectionString);
@@ -17,6 +19,7 @@ internal sealed class PilotKeyRing(string connectionString) : IXmlRepository
         return keys;
     }
 
+    // Persiste una clave en el mismo repositorio para que siga disponible después de reiniciar el servicio.
     public void StoreElement(XElement element, string friendlyName)
     {
         using var connection = new NpgsqlConnection(connectionString);

@@ -4,12 +4,14 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
+// Crea las tablas de cuentas, OpenIddict, códigos de correo, negocios y preferencias iniciales.
 namespace KhypuPyme.Api.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class AccountsAndBusinesses : Migration
     {
         /// <inheritdoc />
+        // Guarda cuentas y negocios en tablas separadas. Una cuenta puede administrar varios negocios, cada uno con su propia configuración.
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.EnsureSchema(
@@ -412,6 +414,7 @@ namespace KhypuPyme.Api.Persistence.Migrations
         }
 
         /// <inheritdoc />
+        // La reversión elimina las tablas creadas aquí. Los datos de este paso solo se recuperan conservando un respaldo.
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(

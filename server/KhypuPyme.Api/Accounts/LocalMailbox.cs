@@ -2,6 +2,8 @@ using System.Text.Json;
 using System.Net.Http.Headers;
 using KhypuPyme.Api.Hosting;
 
+// Este adaptador entrega el código del mismo flujo de cuentas en dos ambientes.
+// En desarrollo lo deja en un archivo del buzón local. El perfil de piloto lo envía por HTTPS.
 namespace KhypuPyme.Api.Accounts;
 
 internal sealed class LocalMailbox(IWebHostEnvironment environment, IConfiguration configuration, PilotOptions pilot,
@@ -9,6 +11,7 @@ internal sealed class LocalMailbox(IWebHostEnvironment environment, IConfigurati
 {
     public bool IsEnabled => pilot.Enabled || environment.IsDevelopment();
 
+    // El servicio que genera el código llama aquí. Así sus reglas de vencimiento e intentos son comunes a ambos ambientes.
     public async Task DeliverAsync(string email, string purpose, string code, CancellationToken ct)
     {
         if (!IsEnabled) throw new InvalidOperationException("El correo no está configurado.");

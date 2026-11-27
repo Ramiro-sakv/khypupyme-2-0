@@ -4,6 +4,8 @@ using KhypuPyme.Api.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
+// Controla el ciclo de prueba, selección de plan y resultado de la demostración de pago.
+// Sus movimientos pertenecen a la licencia del negocio y tienen su propio historial.
 namespace KhypuPyme.Api.Billing;
 
 internal sealed class BillingService(KhypuPymeDbContext db, BusinessAccess access, LicenseAccess license, TimeProvider clock)
@@ -17,6 +19,7 @@ internal sealed class BillingService(KhypuPymeDbContext db, BusinessAccess acces
         }
     }
 
+    // Calcula el acceso actual con los periodos registrados y devuelve el estado que muestra el panel de planes.
     public async Task<PlanStatus> ReadAsync(Guid owner, Guid business, CancellationToken ct)
     {
         await using var tx = await access.OpenAsync(owner, business, ct, System.Data.IsolationLevel.RepeatableRead);
@@ -34,6 +37,7 @@ internal sealed class BillingService(KhypuPymeDbContext db, BusinessAccess acces
             payments.Select(row => Show(row, now)).ToArray());
     }
 
+    // Comprueba correo y negocio elegible bajo un bloqueo de cuenta. Eso evita activar la prueba dos veces con peticiones simultáneas.
     public async Task ActivateTrialAsync(Guid owner, Guid business, CancellationToken ct)
     {
         await using var tx = await access.OpenAsync(owner, business, ct);
@@ -54,6 +58,7 @@ internal sealed class BillingService(KhypuPymeDbContext db, BusinessAccess acces
         await tx.CommitAsync(ct);
     }
 
+    // Conserva el plan y la tarjeta de demostración asociados al intento. Si la misma solicitud vuelve, se recupera su selección original.
     public async Task<PaymentInfo> BeginAsync(Guid owner, Guid business, CheckoutInput input, CancellationToken ct)
     {
         if (input.Id == Guid.Empty) throw new CommerceFailure("Identifica el intento de pago.");
@@ -96,6 +101,7 @@ internal sealed class BillingService(KhypuPymeDbContext db, BusinessAccess acces
         return Show(row, now);
     }
 
+    // Comprueba el estado anterior antes de confirmar, cancelar o reembolsar. Así la interfaz no puede saltarse pasos del intento.
     public async Task<PaymentInfo> ChangeAsync(Guid owner, Guid business, Guid id, CheckoutAction input, CancellationToken ct)
     {
         if (input.Action is not ("confirm" or "cancel" or "expire" or "refund"))
@@ -146,6 +152,7 @@ internal sealed class BillingService(KhypuPymeDbContext db, BusinessAccess acces
         return Show(row, now);
     }
 
+    // Aplica las reglas del reembolso y ajusta la vigencia considerando los demás pagos confirmados.
     private static async Task RefundAsync(IQueryable<PaymentAttempt> rows, PaymentAttempt row, DateTimeOffset now, CancellationToken ct)
     {
         row.State = "refunded";
@@ -180,6 +187,7 @@ internal sealed class BillingService(KhypuPymeDbContext db, BusinessAccess acces
         (trial is not null && trial.StartedAt <= now && trial.EndsAt > now) ||
         paid.Any(x => x.AccessFrom <= now && x.AccessUntil > now);
 
+    // Detecta que un mismo identificador se haya reutilizado para otro plan o tarjeta.
     private static void EnsureSameSelection(PaymentAttempt row, CheckoutInput input)
     {
         if (row.PlanId != input.PlanId || row.CardId != input.CardId)

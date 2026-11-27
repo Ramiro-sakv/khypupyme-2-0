@@ -1,3 +1,5 @@
+// Coordina Mis negocios, el asistente y el espacio de trabajo. La URL recuerda la vista y la API recuerda el último negocio seleccionado.
+
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { change, get } from "../api/client";
@@ -13,6 +15,7 @@ import type { PracticeControls } from "../timber/TimberPractice";
 import { PlanGate } from "../billing/PlanGate";
 import type { AccessSnapshot } from "../billing/PlanGate";
 
+// Recupera la vista al entrar, recargar o volver atrás. El identificador de trabajo se admite solo para pantallas que lo usan.
 function readRoute(): { view: BusinessView; workId: string } {
   const params = new URLSearchParams(location.search);
   const view = params.get("vista");
@@ -38,6 +41,7 @@ export function BusinessesPage({ accountId, accountControls }: { accountId: stri
   }, []);
 
   useEffect(() => {
+    // Cancela peticiones de una carga anterior para que una respuesta tardía no reemplace los datos de la vista actual.
     const controller = new AbortController();
     void Promise.all([get<IndustryOption[]>(businessApi + "/industries", controller.signal),
       get<BusinessSelection>(businessApi + "/last", controller.signal)])
@@ -58,6 +62,7 @@ export function BusinessesPage({ accountId, accountControls }: { accountId: stri
     return () => controller.abort();
   }, [initialRequest]);
 
+  // Actualiza la URL y el estado que dibuja React. Así los botones Atrás y Adelante del navegador pueden volver a una vista anterior.
   function navigate(next: BusinessView, replace = false, targetWork = "") {
     if (view === next && workId === targetWork) return;
     const url = new URL(location.href);
@@ -70,6 +75,7 @@ export function BusinessesPage({ accountId, accountControls }: { accountId: stri
     window.scrollTo(0, 0);
   }
 
+  // Pide al servidor guardar la selección y consulta el perfil autorizado antes de mostrar Inicio.
   async function select(id: string) {
     await change(businessApi + "/" + id + "/selection", "PUT");
     setBusiness(await get<BusinessProfile>(businessApi + "/" + id));
@@ -93,6 +99,7 @@ export function BusinessesPage({ accountId, accountControls }: { accountId: stri
     <div className="picker-account">{accountControls}</div>
   </>;
 
+  // La key usa el identificador del negocio activo para que React cree un espacio nuevo al cambiar entre negocios o entre el negocio real y la práctica.
   const renderWorkspace = (access: AccessSnapshot, active: BusinessProfile, practice?: PracticeControls, practiceEntry?: ReactNode) =>
     <BusinessWorkspace key={active.id} accountId={accountId} business={active} practice={practice} practiceEntry={practiceEntry}
     industry={industries.find((option) => option.id === business.industry)?.name ?? business.industry}

@@ -1,3 +1,5 @@
+/* Vista de negocios, asistente, cabeceras e indicadores de rubro. Los acentos provienen de industryThemes.ts. */
+
 .workspace-nav { max-height: calc(100dvh - 2rem); overflow: auto; }
 .workspace-nav-business { border-bottom: 1px solid var(--line); }
 .workspace-nav .workspace-nav-group { padding: .85rem .6rem .2rem; color: var(--muted); font-size: .71rem; font-weight: var(--weight-label); }
@@ -7,6 +9,7 @@
 .workspace-masthead--compact .card-title { gap: .45rem; }
 .workspace-masthead--compact .card-title > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: .25rem .6rem; }
 .workspace-masthead--compact .card-title p { margin: 0; }
+/* Oculta el enlace de salto en la vista habitual. Cuando recibe el foco con teclado se muestra para poder ir directamente al trabajo. */
 .workspace-nav .workspace-skip:not(:focus-visible) { position: absolute; inline-size: 1px; block-size: 1px; min-block-size: 0;
   padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .workspace-nav .workspace-skip:focus-visible {
@@ -154,6 +157,7 @@
   .report-chart-options { display: grid; }
 }
 
+/* Distribuye los accesos y avisos específicos del rubro sin cambiar las pantallas que abren. */
 .industry-operations { display: grid; gap: .85rem; padding: clamp(.75rem, 2.3vw, 1.25rem);
   border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
 .industry-operations-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .35rem .7rem; }

@@ -1,3 +1,5 @@
+// Controles de madera. Permite consultar el saldo por medida o escribir un grupo de largos, espesores y anchos desde el carrito.
+
 import { useState } from "react";
 import { Alert, Button, Card, DataTable, SelectField, TextField } from "../ui/Primitives";
 import { get } from "../api/client";
@@ -8,6 +10,7 @@ import type { Page, Product } from "../commerce/models";
 import { dimension, displayMeasure, faceUnit, lengthUnit, timberLabel, timberVolume, volumeUnit } from "./measures";
 import type { Capture, Dimensions, StockRow, TimberUnits } from "./measures";
 
+// Usa los filtros visibles para consultar las medidas almacenadas. La pantalla puede ofrecer elegir una fila para la operación actual.
 export function TimberStockTable({ product, units, pick, detailed = false }: {
   product: Pick<Product, "id" | "name">; units: TimberUnits; pick?: (row: StockRow) => void; detailed?: boolean;
 }) {
@@ -43,6 +46,7 @@ export function TimberStockTable({ product, units, pick, detailed = false }: {
   </>;
 }
 
+// Presenta las filas con la preferencia de unidades del negocio. Una selección conserva las dimensiones internas del registro.
 function TimberRows({ product, units, pick, detailed, query }: {
   product: Pick<Product, "id" | "name">; units: TimberUnits; pick?: (row: StockRow) => void; detailed: boolean; query: string;
 }) {
@@ -90,6 +94,7 @@ function TimberRows({ product, units, pick, detailed, query }: {
 export type TimberPreview = { timber: Dimensions; quantity: number; subtotal: number | null;
   requested: number; available?: number };
 
+// Muestra captura y desglose en el mismo grupo. Esto permite comprobar piezas, volumen y subtotal antes de abrir Revisar.
 export function TimberFields({ name, species, productId, capture, onChange, onRemove, cost, costUnit, onCost, disabled, purchase, manualPrice, onPrice, onDuplicate,
   rows, notices, error, total }: {
   name: string; species: string; productId: string; capture: Capture; onChange: (value: Capture) => void; onRemove: () => void;

@@ -4,6 +4,7 @@ using KhypuPyme.Api.Timber;
 using Microsoft.EntityFrameworkCore;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Consulta el almacén y compara el carrito con las existencias registradas. Antes de guardar una venta, TradeOperations comprueba el saldo de nuevo dentro de la transacción.
 namespace KhypuPyme.Api.Commerce;
 
 public sealed record StockRequest(StockLine[] Lines, bool Receiving = false, bool Quote = false);
@@ -19,6 +20,7 @@ internal sealed class StockReads(KhypuPymeDbContext db, StoreReads store, TimePr
 {
     private DateOnly Today => LocalDate(clock.GetUtcNow());
 
+    // Combina cantidades repetidas por producto, medida y lote. Dos líneas de la misma medida deben competir por el mismo saldo.
     public async Task<StockCheck[]> CheckAsync(Guid businessId, StockRequest request, CancellationToken ct)
     {
         if (request.Lines is not { Length: >= 1 and <= 100 } lines || lines.Any(x => x is null || x.Serials?.Length > 100))
@@ -33,11 +35,13 @@ internal sealed class StockReads(KhypuPymeDbContext db, StoreReads store, TimePr
                                  where product.BusinessId == businessId && ids.Contains(product.Id)
                                  select new { Product = product, business.Industry }).ToArrayAsync(ct);
         if (productRows.Length != ids.Length) throw new CommerceFailure("Un producto no está disponible en este negocio.", 404);
+        // El diccionario permite encontrar cada ficha por su ID mientras se recorren las líneas, sin volver a consultar la base por cada una.
         var products = productRows.ToDictionary(x => x.Product.Id, x => x.Product);
         var result = await CheckSerialsAsync(businessId, request.Receiving, products, lines, ct);
         if (request.Receiving) return result.ToArray();
 
         var industry = productRows[0].Industry;
+        // Las series se comprueban por unidad y los servicios no consumen stock. Aquí se suman las líneas que sí comparten una cantidad disponible.
         var requested = lines.Where(x => x.Serials is not { Length: > 0 } && !products[x.ProductId].IsService)
             .Select(line => Prepare(line, products[line.ProductId], industry, request.Quote))
             .GroupBy(x => new { x.Product, x.Timber, x.Lot })
@@ -83,11 +87,13 @@ internal sealed class StockReads(KhypuPymeDbContext db, StoreReads store, TimePr
                 if (inspections.Contains(product.Id)) reason = "Hay equipos en inspección";
             }
             if (!product.Active) { available = 0; reason = "Producto archivado"; }
+            // La interfaz compara Requested con Available para mostrar cuánto falta. Reason permite explicar por qué un producto está bloqueado.
             result.Add(new(product.Id, row.Timber, null, row.Quantity, available, reason, row.Lot));
         }
         return result.ToArray();
     }
 
+    // Compara las series pedidas con el estado de cada unidad. Un equipo disponible y uno en inspección pueden pertenecer al mismo modelo.
     private async Task<List<StockCheck>> CheckSerialsAsync(Guid businessId, bool receiving, Dictionary<Guid, Product> products,
         StockLine[] lines, CancellationToken ct)
     {
@@ -129,6 +135,7 @@ internal sealed class StockReads(KhypuPymeDbContext db, StoreReads store, TimePr
         return new(product, dimension, line.Quantity, null);
     }
 
+    // Lee los lotes vendibles en bloque. Distingue existencias físicas de las que están habilitadas para usarse en la venta.
     private async Task<ILookup<Guid, LotBalance>> ReadLotsAsync(Guid businessId, StockDemand[] requested, CancellationToken ct)
     {
         var ids = requested.Where(x => x.Product.TrackLots).Select(x => x.Product.Id).Distinct().ToArray();
@@ -141,6 +148,7 @@ internal sealed class StockReads(KhypuPymeDbContext db, StoreReads store, TimePr
         return balances.ToLookup(x => x.ProductId);
     }
 
+    // Busca de una vez las combinaciones exactas de producto y medida. El saldo se consulta con la misma clave usada al agrupar el pedido.
     private async Task<Dictionary<(Guid ProductId, TimberDimensions Timber), int>> ReadTimberAsync(
         Guid businessId, StockDemand[] requested, CancellationToken ct)
     {
@@ -150,6 +158,7 @@ internal sealed class StockReads(KhypuPymeDbContext db, StoreReads store, TimePr
         var lengths = rows.Select(x => x.Timber!.LengthMicros).ToArray();
         var thicknesses = rows.Select(x => x.Timber!.ThicknessMicros).ToArray();
         var widths = rows.Select(x => x.Timber!.WidthMicros).ToArray();
+        // unnest convierte las cuatro listas en filas de medidas solicitadas. El JOIN compara cada combinación completa con el stock del negocio en una sola consulta.
         var balances = await db.Database.SqlQuery<TimberBalance>($"""
             SELECT stock."ProductId", stock."LengthMicros", stock."ThicknessMicros", stock."WidthMicros", stock."Stock"
             FROM unnest({ids}::uuid[], {lengths}::bigint[], {thicknesses}::bigint[], {widths}::bigint[])
@@ -165,6 +174,7 @@ internal sealed class StockReads(KhypuPymeDbContext db, StoreReads store, TimePr
     private sealed record LotBalance(Guid ProductId, string? Lot, decimal Quantity);
     private sealed record TimberBalance(Guid ProductId, long LengthMicros, long ThicknessMicros, long WidthMicros, int Stock);
 
+    // Prepara las fichas y el estado de disponibilidad para Almacén. Los filtros se aplican antes de paginar.
     public async Task<CommercePage<WarehouseItem>> WarehouseAsync(string? search, string? status, string? attention,
         string? vehicleBrand, string? vehicleModel, int? year, int? page, CancellationToken ct)
     {
@@ -200,6 +210,7 @@ internal sealed class StockReads(KhypuPymeDbContext db, StoreReads store, TimePr
         return new(pageIds.Items.Select(x => new WarehouseItem(documents[x.Id], x.Status)).ToArray(), pageIds.HasMore);
     }
 
+    // Lee las líneas de operaciones que movieron inventario para mostrar la fecha, la cantidad y su comprobante.
     public async Task<CommercePage<StockMovement>> MovementsAsync(Guid productId, int? page, CancellationToken ct)
     {
         if (!await db.Set<Product>().AnyAsync(x => x.Id == productId, ct))

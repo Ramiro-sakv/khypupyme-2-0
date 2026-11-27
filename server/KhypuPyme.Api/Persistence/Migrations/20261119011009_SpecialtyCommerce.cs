@@ -3,12 +3,14 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+// Añade datos para librería, ferretería, repuestos y actividades que usan variantes o equipos por serie.
 namespace KhypuPyme.Api.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class SpecialtyCommerce : Migration
     {
         /// <inheritdoc />
+        // Separa referencias equivalentes y compatibilidad de vehículos en tablas consultables. La ficha puede declarar para qué modelos se conoce la compatibilidad.
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
@@ -178,6 +180,7 @@ namespace KhypuPyme.Api.Persistence.Migrations
         }
 
         /// <inheritdoc />
+        // Elimina esta extensión de fichas, referencias y compatibilidades.
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(

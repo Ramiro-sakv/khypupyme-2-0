@@ -2,6 +2,7 @@ using KhypuPyme.Api.Commerce;
 using Microsoft.EntityFrameworkCore;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Un equipo serializado tiene un estado propio. Se identifica cada unidad con su número de serie para saber si sigue disponible, fue vendida o quedó en inspección.
 namespace KhypuPyme.Api.Retail;
 
 internal sealed class EquipmentInventory(CommerceTransaction work)
@@ -9,6 +10,7 @@ internal sealed class EquipmentInventory(CommerceTransaction work)
     private readonly HashSet<string> touched = new(StringComparer.Ordinal);
     private DbSet<EquipmentUnit> Units => work.Db.Set<EquipmentUnit>();
 
+    // Normaliza y valida las series de la operación. Detectar repetidos evita registrar dos veces la misma unidad.
     public string[] Validate(Product product, CommandLine line, bool required)
     {
         if (product.WarrantyMonths is null)
@@ -26,6 +28,7 @@ internal sealed class EquipmentInventory(CommerceTransaction work)
         return line.Serials.Select(x => x.Trim()).ToArray();
     }
 
+    // Da de alta una unidad disponible y vincula su costo al comprobante de compra.
     public async Task BuyAsync(Product product, string serial, long cost, Entry entry)
     {
         var key = RetailMeasures.SeriesKey(serial);
@@ -38,6 +41,7 @@ internal sealed class EquipmentInventory(CommerceTransaction work)
         Log(unit, entry, "purchase");
     }
 
+    // Requiere que la unidad esté disponible. Guarda su vínculo con la venta y la garantía de esa unidad.
     public async Task<EquipmentUnit> SellAsync(Product product, string serial, Entry entry)
     {
         var unit = await FindAsync(serial);
@@ -52,6 +56,7 @@ internal sealed class EquipmentInventory(CommerceTransaction work)
         return unit;
     }
 
+    // Comprueba la venta de origen y decide si la unidad vuelve al inventario o se mantiene apartada para inspección.
     public async Task RefundAsync(Product product, string serial, Entry origin, Entry entry, bool inspect)
     {
         var unit = await FindAsync(serial);
@@ -61,6 +66,7 @@ internal sealed class EquipmentInventory(CommerceTransaction work)
         Log(unit, entry, "return");
     }
 
+    // Registra el resultado de una revisión para determinar si el equipo vuelve a quedar disponible.
     public async Task<Guid> InspectAsync()
     {
         if (!SpecialtyProfiles.HasEquipment(work.Business.Industry) || work.Command.Release is not bool release)
@@ -86,6 +92,7 @@ internal sealed class EquipmentInventory(CommerceTransaction work)
         return entry.Id;
     }
 
+    // Registra la atención de garantía sobre la unidad vendida y mantiene su historial por número de serie.
     public async Task<Guid> WarrantyAsync()
     {
         if (!SpecialtyProfiles.HasEquipment(work.Business.Industry) || work.Command.Code is not ("open" or "resolved"))

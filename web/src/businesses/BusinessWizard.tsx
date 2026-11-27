@@ -1,3 +1,5 @@
+// Asistente para crear un negocio. Separa elegir el rubro, completar su configuración y revisar la ficha antes de enviarla.
+
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { change } from "../api/client";
@@ -29,11 +31,13 @@ export function BusinessWizard({ industries, onCancel, onCreated }: {
 
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, [step]);
 
+  // Modifica un dato del borrador mediante el nombre de su campo. Los otros valores escritos se conservan.
   function update(field: keyof Draft, value: string) {
     setDraft((current) => ({ ...current, [field]: value }));
     setAttemptId(crypto.randomUUID());
   }
 
+  // Valida el paso actual. La petición de alta se reserva para el paso que confirma los datos revisados.
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!industry) return;

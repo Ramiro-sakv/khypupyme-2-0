@@ -1,3 +1,5 @@
+// Permite abrir bolsas de un lote para transferir su contenido a granel. El servidor conserva el vínculo con el lote y controla la cantidad.
+
 import { useState } from "react";
 import { useCommerce, useCommerceData } from "../commerce/CommerceContext";
 import { LoadFeedback, OperationForm, Pages, useCommercialForm } from "../commerce/CommerceUi";
@@ -25,6 +27,7 @@ export function CementOpening({ product, close }: { product: Product; close: () 
   </Card>;
 }
 
+// Prepara la cantidad de bolsas que se van a abrir. El saldo del lote que se ve aquí orienta la captura y se vuelve a validar al confirmar.
 function OpenLot({ product, lot, close }: { product: Product; lot: Lot; close: () => void }) {
   const { showDocument } = useCommerce();
   const form = useCommercialForm();

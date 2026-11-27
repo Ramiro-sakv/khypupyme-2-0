@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
+// Este servicio prepara y canjea códigos de cinco dígitos.
+// El estado se guarda en PostgreSQL para controlar reenvíos, intentos y uso aunque se recargue la pantalla.
 namespace KhypuPyme.Api.Accounts;
 
 internal sealed class EmailCodes(
@@ -19,6 +21,7 @@ internal sealed class EmailCodes(
     public const string Recovery = "recovery";
     private readonly IDataProtector protector = protection.CreateProtector("KhypuPyme.EmailCodes.v1");
 
+    // Bloquea operaciones del mismo correo durante la transacción. Así dos peticiones no consumen el mismo código a la vez.
     public async Task<IDbContextTransaction> LockAsync(string email, CancellationToken ct)
     {
         var tx = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
@@ -35,6 +38,7 @@ internal sealed class EmailCodes(
         }
     }
 
+    // Aplica el límite de reenvíos, prepara un código temporal y pide al proveedor de correo que lo entregue cuando corresponde.
     public async Task<IResult> SendAsync(string email, string normalized, string purpose, bool deliver, CancellationToken ct)
     {
         if (!mailbox.IsEnabled)
@@ -80,6 +84,7 @@ internal sealed class EmailCodes(
         return Results.NoContent();
     }
 
+    // Comprueba el propósito, vencimiento e intentos antes de aplicar la acción. El estado de uso queda guardado con el cambio.
     public async Task<IResult> RedeemAsync(
         string normalized, string purpose, string code,
         Func<Task<IdentityResult>> apply, CancellationToken ct)
@@ -112,6 +117,7 @@ internal sealed class EmailCodes(
         return Results.NoContent();
     }
 
+    // Recupera el valor protegido para validar el flujo sin escribir el código en los mensajes de diagnóstico.
     private string? Unprotect(EmailChallenge challenge)
     {
         if (challenge.ProtectedCode.Length == 0) return null;

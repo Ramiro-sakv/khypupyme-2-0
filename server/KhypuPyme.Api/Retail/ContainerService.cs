@@ -3,12 +3,14 @@ using KhypuPyme.Api.Persistence;
 using Microsoft.EntityFrameworkCore;
 using static KhypuPyme.Api.Commerce.CommerceRules;
 
+// Las bebidas retornables se controlan en cantidades. Las existencias de envases y los préstamos a clientes se registran por separado del dinero.
 namespace KhypuPyme.Api.Retail;
 
 public sealed record ContainerInput(Guid TypeId, int Delivered, int Returned);
 public sealed record ContainerInfo(Guid TypeId, string Name, int Available, int Borrowed, int CustomerBalance);
 public sealed record ContainerMovementInfo(string Name, int Delivered, int Returned, int? CustomerBalance, int Available, int Added);
 
+// Guarda cuántos envases de un tipo hay disponibles y cuántos siguen prestados.
 internal sealed class ContainerType : IBusinessRecord
 {
     public Guid BusinessId { get; init; }
@@ -19,6 +21,7 @@ internal sealed class ContainerType : IBusinessRecord
     public int Borrowed { get; set; }
 }
 
+// Identifica el saldo de una persona por cada tipo de envase para limitar sus devoluciones.
 internal sealed class ContainerBalance : IBusinessRecord
 {
     public Guid BusinessId { get; init; }
@@ -27,6 +30,7 @@ internal sealed class ContainerBalance : IBusinessRecord
     public int Quantity { get; set; }
 }
 
+// Conserva las cantidades entregadas o recibidas y el vínculo con su operación de origen.
 internal sealed class ContainerMovement : IBusinessRecord
 {
     public Guid BusinessId { get; init; }
@@ -53,6 +57,7 @@ internal sealed class ContainerService(CommerceTransaction work)
         return entry.Id;
     }
 
+    // Registra una entrada de envases al negocio para aumentar la disponibilidad antes de hacer entregas a clientes.
     public async Task<Guid> ReceiveStockAsync()
     {
         RequireIndustry();
@@ -76,6 +81,7 @@ internal sealed class ContainerService(CommerceTransaction work)
         return entry.Id;
     }
 
+    // Valida la cantidad disponible y la obligación del cliente antes de modificar saldos. Así un cliente no devuelve más envases de los que debe.
     public async Task MoveAsync(Entry entry, ContainerInput[]? inputs, bool required = false)
     {
         if (!required && inputs is null) return;
@@ -119,6 +125,7 @@ internal sealed class ContainerService(CommerceTransaction work)
         work.Db.Add(new ContainerMovement { BusinessId = entry.BusinessId, EntryId = entry.Id, TypeId = type.Id, Name = type.Name,
             Delivered = delivered, Returned = received, Added = added, CustomerBalance = balance, Available = type.Available });
 
+    // Devuelve el detalle de envases pendientes por cliente para que el comerciante pueda revisar qué debe recuperar.
     public static Task<CommercePage<ContainerObligation>> ObligationsAsync(KhypuPymeDbContext db, string? search, int? page, CancellationToken ct)
     {
         var balances = db.Set<ContainerBalance>().AsNoTracking();

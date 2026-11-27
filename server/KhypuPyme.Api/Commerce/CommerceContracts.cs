@@ -4,9 +4,11 @@ using KhypuPyme.Api.Retail;
 using KhypuPyme.Api.Services;
 using KhypuPyme.Api.Businesses;
 
+// Define los datos que viajan en JSON entre React y la API. Estos tipos permiten conocer qué campos espera el servidor antes de leer la lógica de la operación.
 namespace KhypuPyme.Api.Commerce;
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+// OperationId identifica el intento. Si la conexión se corta, el cliente puede preguntar si ya se confirmó ese mismo intento.
 public sealed record CommerceCommand(
     Guid OperationId, string Kind, Guid? EntityId = null, Guid? CustomerId = null, Guid? SourceId = null,
     string? Name = null, string? Code = null, string? Phone = null, string? Method = null, string? Note = null,
@@ -24,11 +26,13 @@ public sealed record CommerceCommand(
 public sealed record VariantInput(Guid Id, string? Code, string Size, string Color, long AmountMinor);
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+// Cada línea identifica el producto y la cantidad. Los campos opcionales describen casos como una medida de madera, un lote o una serie.
 public sealed record CommandLine(Guid ProductId, int Quantity, long? UnitMinor = null, bool? Restock = null,
     TimberDimensions? Timber = null, Guid? OriginalLineId = null, RetailInput? Measure = null, string[]? Serials = null,
     PrintingInput? Printing = null, TileRequest? Tile = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? TimberRateManual = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? TimberCostUnit = null);
+// EntityId señala el resultado confirmado, como la venta. OperationId sigue identificando la solicitud que produjo ese resultado.
 public sealed record CommandResult(Guid OperationId, string Kind, Guid EntityId);
 
 public sealed record CommercePage<T>(T[] Items, bool HasMore);
@@ -45,6 +49,7 @@ public sealed record ReceivableInfo(Guid SaleId, string Number, DateOnly Date, s
 
 public sealed record EntryInfo(Guid Id, string Number, string Kind, DateOnly Date, string? Method, string? CustomerName,
     long TotalMinor, long CashDeltaMinor, Guid? SourceId, bool Linked);
+// Estos datos salen del registro comercial. Así, el precio del comprobante se conserva aunque cambie la ficha del producto.
 public sealed record EntryDocument(Guid Id, string Number, string Kind, DateOnly Date, DateOnly? ExpiresOn,
     string BusinessName, Guid? CustomerId, string? CustomerName, string? Method, string Note,
     long TotalMinor, long DiscountMinor, long CashDeltaMinor, long DebtDeltaMinor, Guid? SourceId,
@@ -54,6 +59,7 @@ public sealed record DocumentLine(Guid ProductId, string Name, string Code, int 
     long SubtotalMinor, long CostMinor, bool? Restocked, int ReturnedQuantity,
     Guid LineId, string? Species, TimberDimensions? Timber, LineDetails? Details, decimal ReturnedBaseQuantity);
 
+// Cada día reúne ventas, costo de lo vendido, compras, gastos y pérdidas como cifras distintas. El inventario comprado puede seguir disponible para otra venta.
 public sealed record ResultDay(DateOnly Date, long SalesMinor, long CostMinor, long PurchasesMinor, long ExpensesMinor, long LossesMinor)
 {
     public long ResultMinor => SalesMinor - CostMinor - ExpensesMinor - LossesMinor;

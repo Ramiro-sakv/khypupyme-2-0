@@ -5,11 +5,13 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
 
+// Este servicio protege las acciones que cierran el acceso a toda la cuenta. Distingue revocar sesiones de solicitar la baja.
 namespace KhypuPyme.Api.Security;
 
 internal sealed class AccountActions(KhypuPymeDbContext db, BusinessAccess access, BusinessRemoval removal, SecurityProofs proofs,
     UserManager<IdentityUser<Guid>> users, IOpenIddictTokenManager tokens, TimeProvider clock)
 {
+    // Exige una aprobación del titular. Para la baja, comprueba antes que los negocios y sus prácticas no tengan operaciones abiertas.
     public async Task ApplyAsync(Guid owner, Guid proofId, bool closure, CancellationToken ct)
     {
         await using var tx = await access.OpenAsync(owner, null, ct);
@@ -35,7 +37,9 @@ internal sealed class AccountActions(KhypuPymeDbContext db, BusinessAccess acces
             db.Add(new AccountClosure { OwnerId = owner, RequestedAt = clock.GetUtcNow() });
             Ensure(await users.SetLockoutEndDateAsync(user, clock.GetUtcNow().AddYears(100)));
         }
+        // Cambia la marca de seguridad de Identity para que las cookies anteriores dejen de representar una sesión válida.
         Ensure(await users.UpdateSecurityStampAsync(user));
+        // Recopila los tokens nativos y luego los revoca. Así también se cierra el acceso de Android y Windows.
         var sessions = new List<object>();
         await foreach (var token in tokens.FindBySubjectAsync(owner.ToString(), ct)) sessions.Add(token);
         foreach (var token in sessions)

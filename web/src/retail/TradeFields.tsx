@@ -1,3 +1,5 @@
+// Controles que comparten los rubros de comercio para capturar códigos, tamaños, unidades, lotes y series.
+
 import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { ApiError, get } from "../api/client";
@@ -9,6 +11,7 @@ import type { Page, Product } from "../commerce/models";
 import { baseUnit, fromBase, quantityLabel, retailUnits, unitLabels } from "./measures";
 import type { Lot, Measure, Serial } from "./measures";
 
+// Recibe el lector como teclado. Refuerza el flujo de escanear o escribir un código y usar Enter para añadir el producto.
 export function BarcodeField({ add, disabled, focus, accepts }: {
   add: (product: Product) => void; disabled: boolean; focus?: boolean; accepts: (product: Product) => boolean;
 }) {
@@ -48,6 +51,7 @@ export function BarcodeField({ add, disabled, focus, accepts }: {
   </form>;
 }
 
+// Organiza tallas y colores del modelo. En un cambio puede exigir saldo y excluir la variante que se está devolviendo.
 export function VariantMatrix({ model, choose, disabled, excluded, requireStock }: {
   model: string; choose?: (product: Product) => void; disabled?: boolean; excluded?: string; requireStock?: boolean;
 }) {
@@ -75,6 +79,7 @@ export function VariantMatrix({ model, choose, disabled, excluded, requireStock 
     })] }))} />;
 }
 
+// Muestra la cantidad y presentación admitidas. Por ejemplo, comprar por rollo y vender por metro requiere distinguir esas unidades.
 export function MeasuredFields({ profile, quantity, measure, buying, mixed, boxSale, bag, lockedQuantity, disabled, onQuantity, onMeasure }: {
   profile: NonNullable<Product["retail"]>; quantity: string; measure: Omit<Measure, "quantity">; buying: boolean; mixed?: boolean; disabled: boolean;
   boxSale?: boolean; bag?: boolean; lockedQuantity?: boolean;
@@ -99,6 +104,7 @@ export function MeasuredFields({ profile, quantity, measure, buying, mixed, boxS
   </div>;
 }
 
+// Ofrece unidades concretas que pueden seleccionarse. Una venta por serie identifica el equipo junto con el modelo.
 export function SerialPicker({ productId, selected, choose, disabled }: {
   productId: string; selected: string[]; choose: (serials: string[]) => void; disabled: boolean;
 }) {
@@ -121,6 +127,7 @@ export function SerialPicker({ productId, selected, choose, disabled }: {
   </Card>;
 }
 
+// Presenta las partidas del producto. Cada rubro puede ofrecer acciones de seguimiento o seleccionar un lote desde la tabla.
 export function LotsTable({ product, choose, actions }: { product: Product; choose?: (lot: Lot) => void;
   actions?: (lot: Lot) => ReactNode }) {
   const [page, setPage] = useState(1);

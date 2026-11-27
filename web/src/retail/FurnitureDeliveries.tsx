@@ -1,3 +1,5 @@
+// Gestiona entregas y retiros vinculados a una operación registrada. La vista muestra el estado del despacho que devuelve el servidor.
+
 import { useState } from "react";
 import type { components } from "../api/schema";
 import { useCommerce, useCommerceData } from "../commerce/CommerceContext";
@@ -45,6 +47,7 @@ export function DeliveriesPage({ initial }: { initial?: string }) {
   </div>;
 }
 
+// Abre el seguimiento dentro del comprobante. Un mismo despacho se puede consultar desde la venta que lo originó.
 export function DeliveryPanel({ document }: { document: EntryDocument }) {
   const [editing, setEditing] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -85,6 +88,7 @@ export function DeliveryPanel({ document }: { document: EntryDocument }) {
   </Card>;
 }
 
+// Captura los datos del retiro o la entrega y conserva la referencia al documento al guardar.
 function DeliveryEditor({ document, close }: { document: EntryDocument; close: () => void }) {
   const [mode, setMode] = useState(document.delivery?.mode ?? "pickup");
   const [day, setDay] = useState(document.delivery?.day ?? today);

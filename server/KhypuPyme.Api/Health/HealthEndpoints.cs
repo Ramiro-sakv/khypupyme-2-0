@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
+// Estos puntos de diagnóstico permiten comprobar por separado que la API responde y que PostgreSQL está preparado.
 namespace KhypuPyme.Api.Health;
 
 internal static class HealthEndpoints
@@ -13,12 +14,14 @@ internal static class HealthEndpoints
         group.MapGet("/database", DatabaseStatusAsync).WithName("GetDatabaseHealth").Produces<HealthStatus>(StatusCodes.Status503ServiceUnavailable);
     }
 
+    // Responde desde la API sin abrir PostgreSQL. Sirve para ubicar un fallo de arranque antes de revisar la base.
     private static Ok<HealthStatus> ApiStatus(HttpContext http)
     {
         http.Response.Headers.CacheControl = "no-store";
         return TypedResults.Ok(new HealthStatus("available"));
     }
 
+    // Comprueba la conexión y el permiso para usar el esquema khypupyme. La pantalla puede distinguir una API activa de una base inaccesible.
     private static async Task<Results<Ok<HealthStatus>, JsonHttpResult<HealthStatus>>> DatabaseStatusAsync(
         HttpContext http,
         KhypuPymeDbContext database,

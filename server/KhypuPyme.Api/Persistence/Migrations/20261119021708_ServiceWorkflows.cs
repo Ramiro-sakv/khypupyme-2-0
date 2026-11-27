@@ -3,12 +3,14 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+// Añade órdenes de trabajo y permite identificar fichas de servicios en el catálogo.
 namespace KhypuPyme.Api.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class ServiceWorkflows : Migration
     {
         /// <inheritdoc />
+        // La orden guarda referencias a cliente, servicio, constancia o venta según el proceso. Esto permite recuperar el trabajo asociado al cobro.
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<bool>(
@@ -120,6 +122,7 @@ namespace KhypuPyme.Api.Persistence.Migrations
         }
 
         /// <inheritdoc />
+        // Retira las órdenes de trabajo y el indicador de servicio que incorporó este paso.
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
